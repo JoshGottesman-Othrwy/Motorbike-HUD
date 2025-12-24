@@ -4,34 +4,32 @@
 #include <ArduinoOTA.h>
 #include <vector>
 
-struct NetworkCredentials
-{
+struct NetworkCredentials {
     const char *ssid;
     const char *password;
 };
 
-class WiFiManager
-{
+class WiFiManager {
 private:
     std::vector<NetworkCredentials> networks;
     bool isConnected = false;
     unsigned long lastConnectionAttempt = 0;
     const unsigned long connectionRetryInterval = 30000; // 30 seconds
-
+    
     // OTA Update state
     bool otaInProgress = false;
     bool otaSuccess = false;
-
+    
     // Private methods
     void setupOTA();
     void handleOTAStart();
     void handleOTAEnd();
     void handleOTAProgress(unsigned int progress, unsigned int total);
     void handleOTAError(ota_error_t error);
-
+    
 public:
     WiFiManager();
-
+    
     // Network management
     void addNetwork(const char *ssid, const char *password);
     void clearNetworks();
@@ -39,12 +37,12 @@ public:
     void loop();
     bool connect();
     bool disconnect();
-
+    
     // Status getters
     bool isWiFiConnected() const { return isConnected; }
-    String getSSID() const;
-    String getLocalIP() const;
-
+    const char *getSSID() const;
+    const char *getLocalIP() const;
+    
     // OTA Update status
     bool isOTARunning() const { return otaInProgress; }
     bool wasOTASuccessful() const { return otaSuccess; }

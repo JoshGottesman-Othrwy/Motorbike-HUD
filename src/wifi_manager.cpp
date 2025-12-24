@@ -105,22 +105,22 @@ bool WiFiManager::disconnect()
     return true;
 }
 
-String WiFiManager::getSSID() const
+const char *WiFiManager::getSSID() const
 {
     if (isConnected)
     {
-        return WiFi.SSID();
+        return WiFi.SSID().c_str();
     }
-    return String("Not Connected");
+    return "Not Connected";
 }
 
-String WiFiManager::getLocalIP() const
+const char *WiFiManager::getLocalIP() const
 {
     if (isConnected)
     {
-        return WiFi.localIP().toString();
+        return WiFi.localIP().toString().c_str();
     }
-    return String("0.0.0.0");
+    return "0.0.0.0";
 }
 
 void WiFiManager::setupOTA()
