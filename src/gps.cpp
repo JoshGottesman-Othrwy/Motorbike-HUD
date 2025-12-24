@@ -3,7 +3,8 @@
 // GPS baud rates to try during auto-detection
 const uint32_t GPS::gpsTestBauds[] = {115200, 38400, 9600};
 
-GPS::GPS() : gpsSerial(2)
+GPS::GPS()
+    : gpsSerial(2)
 {
     // Constructor initializes member variables
 }
