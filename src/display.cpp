@@ -4,21 +4,24 @@
 LV_FONT_DECLARE(RobotoBlack_60);
 LV_FONT_DECLARE(RobotoBlack_200);
 
-Display::Display() {
+Display::Display()
+{
     // Constructor
 }
 
-bool Display::begin() {
+bool Display::begin()
+{
     Serial.print("Initializing display... ");
 
     // Automatically determine the access device
     bool rslt = amoled.begin();
-    if (!rslt) {
+    if (!rslt)
+    {
         Serial.println("FAILED");
         Serial.println("Display error: Cannot detect board model");
         return false;
     }
-    
+
     Serial.println("OK");
 
     // Register lvgl helper
@@ -27,20 +30,27 @@ bool Display::begin() {
 
     // Initialize colors
     initializeColors();
-    
+
     // Black screen
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
-    
+
+    // Create tileview with pages
+    createTileview();
+
     // Create UI elements
     createUIElements();
-    
+
+    // Create info page
+    createInfoPage();
+
     // Run startup screen
     startUpScreen();
-    
+
     return true;
 }
 
-void Display::initializeColors() {
+void Display::initializeColors()
+{
     grey = lv_color_make(0xAA, 0xAA, 0xAA);
     darkGrey = lv_color_make(0x5C, 0x5C, 0x5C);
     veryDarkGrey = lv_color_make(0x32, 0x32, 0x32);
@@ -50,54 +60,70 @@ void Display::initializeColors() {
     red = lv_color_make(0xAA, 0x43, 0x36);
 }
 
-void Display::createUIElements() {
-    // Set label formats/positions
-    TopLabel = lv_label_create(lv_scr_act());
+void Display::createTileview()
+{
+    // Create tileview container
+    tileview = lv_tileview_create(lv_scr_act());
+    lv_obj_set_style_bg_color(tileview, lv_color_black(), 0);
+
+    // Create main speed page (tile 0, 0) - can swipe right to info
+    speedPage = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT);
+    lv_obj_set_style_bg_color(speedPage, lv_color_black(), 0);
+
+    // Create info page (tile 1, 0) - can swipe left back to speed
+    infoPage = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT);
+    lv_obj_set_style_bg_color(infoPage, lv_color_black(), 0);
+}
+
+void Display::createUIElements()
+{
+    // Set label formats/positions - create on speed page instead of screen
+    TopLabel = lv_label_create(speedPage);
     lv_obj_set_style_text_font(TopLabel, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(TopLabel, lv_color_white(), 0);
     lv_obj_align(TopLabel, LV_ALIGN_TOP_LEFT, 5, 5);
 
-    BottomLabel = lv_label_create(lv_scr_act());
+    BottomLabel = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomLabel, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(BottomLabel, lv_color_white(), 0);
     lv_obj_align(BottomLabel, LV_ALIGN_TOP_LEFT, 5, 125);
 
-    AuxVariable = lv_label_create(lv_scr_act());
+    AuxVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(AuxVariable, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(AuxVariable, grey, 0);
     lv_obj_align(AuxVariable, LV_ALIGN_TOP_LEFT, 105, 5);
 
-    TopUnits = lv_label_create(lv_scr_act());
+    TopUnits = lv_label_create(speedPage);
     lv_obj_set_style_text_font(TopUnits, &lv_font_montserrat_34, 0);
     lv_obj_set_style_text_color(TopUnits, lv_color_white(), 0);
     lv_obj_align(TopUnits, LV_ALIGN_TOP_LEFT, 168, 65);
 
-    BottomUnits = lv_label_create(lv_scr_act());
+    BottomUnits = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomUnits, &lv_font_montserrat_34, 0);
     lv_obj_set_style_text_color(BottomUnits, lv_color_white(), 0);
     lv_obj_align(BottomUnits, LV_ALIGN_TOP_LEFT, 168, 185);
 
-    MainUnits = lv_label_create(lv_scr_act());
+    MainUnits = lv_label_create(speedPage);
     lv_obj_set_style_text_font(MainUnits, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(MainUnits, grey, 0);
     lv_obj_align(MainUnits, LV_ALIGN_BOTTOM_RIGHT, 0, -10);
 
-    MainVariable = lv_label_create(lv_scr_act());
+    MainVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(MainVariable, &RobotoBlack_200, 0);
     lv_obj_set_style_text_color(MainVariable, lv_color_white(), 0);
     lv_obj_align(MainVariable, LV_ALIGN_BOTTOM_RIGHT, 0, -25);
 
-    TopVariable = lv_label_create(lv_scr_act());
+    TopVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(TopVariable, &RobotoBlack_60, 0);
     lv_obj_set_style_text_color(TopVariable, lv_color_white(), 0);
     lv_obj_align(TopVariable, LV_ALIGN_BOTTOM_RIGHT, -370, -130);
 
-    BottomVariable = lv_label_create(lv_scr_act());
+    BottomVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomVariable, &RobotoBlack_60, 0);
     lv_obj_set_style_text_color(BottomVariable, lv_color_white(), 0);
     lv_obj_align(BottomVariable, LV_ALIGN_BOTTOM_RIGHT, -370, -10);
 
-    debugDisp = lv_label_create(lv_scr_act());
+    debugDisp = lv_label_create(speedPage);
     lv_obj_set_style_text_font(debugDisp, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(debugDisp, green, 0);
     lv_obj_align(debugDisp, LV_ALIGN_TOP_RIGHT, 0, 0);
@@ -113,22 +139,90 @@ void Display::createUIElements() {
     lv_label_set_text_fmt(MainUnits, "mph");
 }
 
-void Display::loop() {
+void Display::createInfoPage()
+{
+    // Make info page scrollable
+    lv_obj_set_scrollbar_mode(infoPage, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_scroll_dir(infoPage, LV_DIR_VER);
+    lv_obj_set_style_pad_all(infoPage, 0, 0);
+
+    // Create a centered label for the info page title
+    lv_obj_t *infoTitle = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(infoTitle, &lv_font_montserrat_34, 0);
+    lv_obj_set_style_text_color(infoTitle, lv_color_white(), 0);
+    lv_label_set_text(infoTitle, "INFO");
+    lv_obj_align(infoTitle, LV_ALIGN_TOP_MID, 0, 20);
+
+    // WiFi Status section
+    lv_obj_t *wifiHeader = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(wifiHeader, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(wifiHeader, grey, 0);
+    lv_label_set_text(wifiHeader, "WiFi Status: ");
+    lv_obj_align(wifiHeader, LV_ALIGN_TOP_LEFT, 10, 70);
+
+    wifiStatusLabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(wifiStatusLabel, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(wifiStatusLabel, red, 0);
+    lv_label_set_text(wifiStatusLabel, "Disconnected");
+    lv_obj_align(wifiStatusLabel, LV_ALIGN_TOP_LEFT, 190, 70);
+
+    wifiSSIDLabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(wifiSSIDLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(wifiSSIDLabel, grey, 0);
+    lv_obj_set_width(wifiSSIDLabel, 430);
+    lv_label_set_long_mode(wifiSSIDLabel, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(wifiSSIDLabel, "SSID: ---");
+    lv_obj_align(wifiSSIDLabel, LV_ALIGN_TOP_LEFT, 10, 110);
+
+    wifiIPLabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(wifiIPLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(wifiIPLabel, grey, 0);
+    lv_obj_set_width(wifiIPLabel, 430);
+    lv_label_set_long_mode(wifiIPLabel, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(wifiIPLabel, "IP: 0.0.0.0");
+    lv_obj_align(wifiIPLabel, LV_ALIGN_TOP_LEFT, 10, 140);
+
+    // Module Status section
+    lv_obj_t *moduleHeader = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(moduleHeader, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(moduleHeader, grey, 0);
+    lv_label_set_text(moduleHeader, "Module Status:");
+    lv_obj_align(moduleHeader, LV_ALIGN_TOP_LEFT, 10, 200);
+
+    moduleGPSLabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(moduleGPSLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(moduleGPSLabel, grey, 0);
+    lv_label_set_text(moduleGPSLabel, "GPS: Not detected");
+    lv_obj_align(moduleGPSLabel, LV_ALIGN_TOP_LEFT, 10, 240);
+
+    moduleIMULabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(moduleIMULabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(moduleIMULabel, grey, 0);
+    lv_label_set_text(moduleIMULabel, "IMU: Not detected");
+    lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 270);
+}
+
+void Display::loop()
+{
     // Handle display updates in the main loop
     lv_task_handler();
 }
 
-void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime) {
+void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime)
+{
     // Update Speed Animation
-    if (millis() - prevSpeedUpdate > updateSpeed) {
+    if (millis() - prevSpeedUpdate > updateSpeed)
+    {
         updateSpeedAnimation(speed);
         prevSpeedUpdate = millis();
     }
 
     // Update Display
-    if (millis() - prevDispUpdate > updateDisplayInterval) {
+    if (millis() - prevDispUpdate > updateDisplayInterval)
+    {
         bool shouldFade = speedInt >= 100;
-        if (shouldFade != isFaded) {
+        if (shouldFade != isFaded)
+        {
             lv_color_t color = shouldFade ? darkGrey : lv_color_white();
             lv_color_t labelColor = shouldFade ? darkGrey : grey;
 
@@ -150,29 +244,39 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
         lv_color_t hdopStateColor;
         const char *hdopStateLabel;
 
-        if (hdop < 1) {
+        if (hdop < 1)
+        {
             hdopState = 0;
             hdopStateColor = green;
             hdopStateLabel = " (Excellent)";
-        } else if (hdop < 2) {
+        }
+        else if (hdop < 2)
+        {
             hdopState = 1;
             hdopStateColor = green;
             hdopStateLabel = " (Good)";
-        } else if (hdop < 5) {
+        }
+        else if (hdop < 5)
+        {
             hdopState = 2;
             hdopStateColor = yellow;
             hdopStateLabel = " (Moderate)";
-        } else if (hdop < 10) {
+        }
+        else if (hdop < 10)
+        {
             hdopState = 3;
             hdopStateColor = orange;
             hdopStateLabel = " (Fair)";
-        } else {
+        }
+        else
+        {
             hdopState = 4;
             hdopStateColor = red;
             hdopStateLabel = "(No Fix)";
         }
 
-        if (hdopState != lastHdopState) {
+        if (hdopState != lastHdopState)
+        {
             lv_obj_set_style_text_color(AuxVariable, hdopStateColor, 0);
             lv_label_set_text_fmt(AuxVariable, "%s", hdopStateLabel);
             lastHdopState = hdopState;
@@ -180,9 +284,12 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
 
         lv_label_set_text_fmt(TopVariable, "%.2f", zeroToSixtyTime);
 
-        if (debug == 1) {
+        if (debug == 1)
+        {
             lv_label_set_text_fmt(debugDisp, ".");
-        } else {
+        }
+        else
+        {
             lv_label_set_text_fmt(debugDisp, " ");
         }
         debug = !debug;
@@ -191,25 +298,75 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
     }
 }
 
-void Display::updateSpeedAnimation(float targetSpeed) {
-    if (speedInt < round(targetSpeed)) {
+void Display::updateSpeedAnimation(float targetSpeed)
+{
+    if (speedInt < round(targetSpeed))
+    {
         speedInt++;
         lv_label_set_text_fmt(MainVariable, "%u", speedInt);
-    } else if (speedInt > round(targetSpeed)) {
+    }
+    else if (speedInt > round(targetSpeed))
+    {
         speedInt--;
         lv_label_set_text_fmt(MainVariable, "%u", speedInt);
     }
 }
 
-void Display::setFirstFix(bool hasFix) {
+void Display::updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status)
+{
+    if (connected)
+    {
+        lv_obj_set_style_text_color(wifiStatusLabel, green, 0);
+        lv_label_set_text(wifiStatusLabel, status);
+        lv_label_set_text_fmt(wifiSSIDLabel, "SSID: %s", ssid);
+        lv_label_set_text_fmt(wifiIPLabel, "IP: %s", ip);
+    }
+    else
+    {
+        lv_obj_set_style_text_color(wifiStatusLabel, yellow, 0);
+        lv_label_set_text(wifiStatusLabel, status);
+        lv_label_set_text(wifiSSIDLabel, "SSID: ---");
+        lv_label_set_text(wifiIPLabel, "IP: 0.0.0.0");
+    }
+}
+
+void Display::updateModuleStatus(bool gpsDetected, bool imuDetected)
+{
+    if (gpsDetected)
+    {
+        lv_obj_set_style_text_color(moduleGPSLabel, green, 0);
+        lv_label_set_text(moduleGPSLabel, "GPS: Detected");
+    }
+    else
+    {
+        lv_obj_set_style_text_color(moduleGPSLabel, red, 0);
+        lv_label_set_text(moduleGPSLabel, "GPS: Not detected");
+    }
+
+    if (imuDetected)
+    {
+        lv_obj_set_style_text_color(moduleIMULabel, green, 0);
+        lv_label_set_text(moduleIMULabel, "IMU: Detected");
+    }
+    else
+    {
+        lv_obj_set_style_text_color(moduleIMULabel, red, 0);
+        lv_label_set_text(moduleIMULabel, "IMU: Not detected");
+    }
+}
+
+void Display::setFirstFix(bool hasFix)
+{
     updateDisplayInterval = hasFix ? 33 : 2000; // update display frequency on fix
 }
 
-void Display::setBrightness(uint8_t brightness) {
+void Display::setBrightness(uint8_t brightness)
+{
     amoled.setBrightness(brightness);
 }
 
-void Display::startUpScreen() {
+void Display::startUpScreen()
+{
     Serial.println("Startup Screen");
 
     lv_obj_set_style_text_color(TopLabel, darkGrey, 0);
@@ -223,13 +380,15 @@ void Display::startUpScreen() {
     lv_label_set_text_fmt(BottomVariable, "0.00");
     lv_label_set_text_fmt(TopVariable, "0.00");
 
-    for (int i = 0; i <= 100; i += 5) {
+    for (int i = 0; i <= 100; i += 5)
+    {
         lv_label_set_text_fmt(MainVariable, "%u", i);
         lv_task_handler();
         delay(10);
     }
 
-    for (int i = 100; i >= 0; i -= 5) {
+    for (int i = 100; i >= 0; i -= 5)
+    {
         lv_label_set_text_fmt(MainVariable, "%u", i);
         lv_task_handler();
         delay(10);

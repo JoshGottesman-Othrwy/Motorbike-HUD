@@ -22,11 +22,13 @@ void WiFiManager::clearNetworks()
 
 bool WiFiManager::begin()
 {
-    Serial.println("Starting WiFi Manager...");
+    statusMessage = "Starting WiFi";
+    Serial.println(statusMessage);
 
     if (networks.empty())
     {
-        Serial.println("No networks configured!");
+        statusMessage = "No networks configured!";
+        Serial.println(statusMessage);
         return false;
     }
 
@@ -58,6 +60,7 @@ bool WiFiManager::connect()
 
     lastConnectionAttempt = currentTime;
 
+    statusMessage = "Attempting to connect";
     Serial.println("Attempting to connect to WiFi networks...");
 
     for (size_t i = 0; i < networks.size(); i++)
@@ -65,15 +68,16 @@ bool WiFiManager::connect()
         const char *ssid = networks[i].ssid;
         const char *password = networks[i].password;
 
+        statusMessage = String("Trying: ") + ssid;
         Serial.printf("Trying: %s\n", ssid);
 
         WiFi.begin(ssid, password);
 
         // Wait up to 10 seconds for connection
         int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 10)
+        while (WiFi.status() != WL_CONNECTED && attempts < 15)
         {
-            delay(300);
+            delay(500);
             Serial.print(".");
             attempts++;
         }
@@ -81,6 +85,7 @@ bool WiFiManager::connect()
 
         if (WiFi.status() == WL_CONNECTED)
         {
+            statusMessage = "Connected";
             Serial.printf("Connected to: %s\n", ssid);
             isConnected = true;
             setupOTA();
@@ -88,6 +93,7 @@ bool WiFiManager::connect()
         }
     }
 
+    statusMessage = "Failed to connect";
     Serial.println("Failed to connect to any network");
     return false;
 }
@@ -101,26 +107,36 @@ bool WiFiManager::disconnect()
 
     WiFi.disconnect();
     isConnected = false;
+    statusMessage = "Disconnected";
     Serial.println("WiFi disconnected");
     return true;
 }
 
 const char *WiFiManager::getSSID() const
 {
+    static String ssidStr;
     if (isConnected)
     {
-        return WiFi.SSID().c_str();
+        ssidStr = WiFi.SSID();
+        return ssidStr.c_str();
     }
     return "Not Connected";
 }
 
 const char *WiFiManager::getLocalIP() const
 {
+    static String ipStr;
     if (isConnected)
     {
-        return WiFi.localIP().toString().c_str();
+        ipStr = WiFi.localIP().toString();
+        return ipStr.c_str();
     }
     return "0.0.0.0";
+}
+
+const char *WiFiManager::getStatusMessage() const
+{
+    return statusMessage.c_str();
 }
 
 void WiFiManager::setupOTA()

@@ -3,11 +3,17 @@
 #include <LilyGo_AMOLED.h>
 #include <LV_Helper.h>
 
-class Display {
+class Display
+{
 private:
     // Display objects
     LilyGo_AMOLED amoled;
-    
+
+    // Tileview and pages
+    lv_obj_t *tileview;
+    lv_obj_t *speedPage;
+    lv_obj_t *infoPage;
+
     // UI Elements
     lv_obj_t *TopLabel;
     lv_obj_t *BottomLabel;
@@ -19,19 +25,26 @@ private:
     lv_obj_t *TopVariable;
     lv_obj_t *BottomVariable;
     lv_obj_t *debugDisp;
-    
+
+    // Info page elements
+    lv_obj_t *wifiStatusLabel;
+    lv_obj_t *wifiSSIDLabel;
+    lv_obj_t *wifiIPLabel;
+    lv_obj_t *moduleGPSLabel;
+    lv_obj_t *moduleIMULabel;
+
     // Display state
     bool isFaded = false;
     int lastHdopState = -1;
     bool debug = false;
     int speedInt = 0;
-    
+
     // Update frequencies
     uint32_t updateDisplayInterval = 33;
     uint32_t prevDispUpdate = 0;
     uint32_t updateSpeed = 100;
     uint32_t prevSpeedUpdate = 0;
-    
+
     // Colors
     lv_color_t grey;
     lv_color_t darkGrey;
@@ -40,23 +53,27 @@ private:
     lv_color_t yellow;
     lv_color_t orange;
     lv_color_t red;
-    
+
     // Private methods
     void initializeColors();
+    void createTileview();
     void createUIElements();
+    void createInfoPage();
     void startUpScreen();
     void updateSpeedAnimation(float targetSpeed);
-    
+
 public:
     Display();
     bool begin();
     void loop();
-    
+
     // Public methods to update display data
     void updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime);
+    void updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status);
+    void updateModuleStatus(bool gpsDetected, bool imuDetected);
     void setFirstFix(bool hasFix);
     void setBrightness(uint8_t brightness);
-    
+
     // Getter for amoled object (needed for button integration)
-    LilyGo_AMOLED& getAmoled() { return amoled; }
+    LilyGo_AMOLED &getAmoled() { return amoled; }
 };
