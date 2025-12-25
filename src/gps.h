@@ -59,6 +59,8 @@ public:
     bool isFirstFix() const { return gpsFirstFix; }
     bool isConfigured() const { return gpsConfigured; }
     bool isLocationValid() const { return gps.location.isValid() && gps.location.age() < 2000; }
+    TinyGPSPlus &getGPS() { return gps; }
+    bool getUKDST(int year, int month, int day, int hour) { return isUKDST(year, month, day, hour); }
 
     // Setters
     void addSpeedOffset(int offset) { speed += offset; }

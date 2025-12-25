@@ -12,7 +12,7 @@ private:
     // Tileview and pages
     lv_obj_t *tileview;
     lv_obj_t *speedPage;
-    lv_obj_t *midPage;
+    lv_obj_t *driveStats;
     lv_obj_t *infoPage;
 
     // UI Elements
@@ -23,7 +23,7 @@ private:
     lv_obj_t *MainVariable;
     lv_obj_t *AuxVariable;
     lv_obj_t *MainUnits;
-    lv_obj_t *TopVariable;
+    lv_obj_t *clockDisplay;
     lv_obj_t *BottomVariable;
     lv_obj_t *debugDisp;
 
@@ -34,9 +34,10 @@ private:
     lv_obj_t *moduleGPSLabel;
     lv_obj_t *moduleIMULabel;
     lv_obj_t *midSatsLabel;
-    lv_obj_t *midGpsStatusLabel;
     lv_obj_t *midSpeedLabel;
     lv_obj_t *midSpeedUnits;
+    lv_obj_t *driveStatsZeroToSixty;
+    lv_obj_t *driveStatsZeroToSixtyUnits;
 
     // Display state
     bool isFaded = false;
@@ -63,7 +64,7 @@ private:
     void initializeColors();
     void createTileview();
     void createUIElements();
-    void createMiddlePage();
+    void createDrivingStatsPage();
     void createInfoPage();
     void startUpScreen();
     void updateSpeedAnimation(float targetSpeed);
@@ -75,6 +76,7 @@ public:
 
     // Public methods to update display data
     void updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime);
+    void updateTimeDisplay(bool timeValid, int hour, int minute);
     void updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status);
     void updateModuleStatus(bool gpsDetected, bool imuDetected);
     void setFirstFix(bool hasFix);

@@ -40,8 +40,8 @@ bool Display::begin()
     // Create UI elements
     createUIElements();
 
-    // Create middle page
-    createMiddlePage();
+    // Create driving stats page
+    createDrivingStatsPage();
 
     // Create info page
     createInfoPage();
@@ -69,15 +69,15 @@ void Display::createTileview()
     tileview = lv_tileview_create(lv_scr_act());
     lv_obj_set_style_bg_color(tileview, lv_color_black(), 0);
 
-    // Create main speed page (tile 0, 0) - can swipe right to middle page
+    // Create main speed page (tile 0, 0) - can swipe right to driving stats page
     speedPage = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT);
     lv_obj_set_style_bg_color(speedPage, lv_color_black(), 0);
 
-    // Create middle blank page (tile 1, 0) - can swipe left to speed or right to info
-    midPage = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT | LV_DIR_RIGHT);
-    lv_obj_set_style_bg_color(midPage, lv_color_black(), 0);
+    // Create driving stats page (tile 1, 0) - can swipe left to speed or right to info
+    driveStats = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT | LV_DIR_RIGHT);
+    lv_obj_set_style_bg_color(driveStats, lv_color_black(), 0);
 
-    // Create info page (tile 2, 0) - can swipe left back to middle page
+    // Create info page (tile 2, 0) - can swipe left back to driving stats page
     infoPage = lv_tileview_add_tile(tileview, 2, 0, LV_DIR_LEFT);
     lv_obj_set_style_bg_color(infoPage, lv_color_black(), 0);
 }
@@ -100,11 +100,6 @@ void Display::createUIElements()
     lv_obj_set_style_text_color(AuxVariable, grey, 0);
     lv_obj_align(AuxVariable, LV_ALIGN_TOP_LEFT, 105, 5);
 
-    TopUnits = lv_label_create(speedPage);
-    lv_obj_set_style_text_font(TopUnits, &lv_font_montserrat_34, 0);
-    lv_obj_set_style_text_color(TopUnits, lv_color_white(), 0);
-    lv_obj_align(TopUnits, LV_ALIGN_TOP_LEFT, 168, 65);
-
     BottomUnits = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomUnits, &lv_font_montserrat_34, 0);
     lv_obj_set_style_text_color(BottomUnits, lv_color_white(), 0);
@@ -120,10 +115,10 @@ void Display::createUIElements()
     lv_obj_set_style_text_color(MainVariable, lv_color_white(), 0);
     lv_obj_align(MainVariable, LV_ALIGN_BOTTOM_RIGHT, 0, -25);
 
-    TopVariable = lv_label_create(speedPage);
-    lv_obj_set_style_text_font(TopVariable, &RobotoBlack_60, 0);
-    lv_obj_set_style_text_color(TopVariable, lv_color_white(), 0);
-    lv_obj_align(TopVariable, LV_ALIGN_BOTTOM_RIGHT, -370, -130);
+    clockDisplay = lv_label_create(speedPage);
+    lv_obj_set_style_text_font(clockDisplay, &RobotoBlack_60, 0);
+    lv_obj_set_style_text_color(clockDisplay, lv_color_white(), 0);
+    lv_obj_align(clockDisplay, LV_ALIGN_BOTTOM_RIGHT, -350, -150);
 
     BottomVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomVariable, &RobotoBlack_60, 0);
@@ -141,40 +136,62 @@ void Display::createUIElements()
     lv_label_set_text_fmt(TopLabel, "Sats.");
     lv_label_set_text_fmt(BottomLabel, "Recent Max.");
     lv_label_set_text_fmt(AuxVariable, "(Low)");
-    lv_label_set_text_fmt(TopUnits, "s (0-60)");
     lv_label_set_text_fmt(BottomUnits, "mph");
     lv_label_set_text_fmt(MainUnits, "mph");
 }
 
-void Display::createMiddlePage()
+void Display::createDrivingStatsPage()
 {
     // Sat status in top-left (mirrors main screen label)
-    midSatsLabel = lv_label_create(midPage);
+    midSatsLabel = lv_label_create(driveStats);
     lv_obj_set_style_text_font(midSatsLabel, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(midSatsLabel, lv_color_white(), 0);
     lv_obj_align(midSatsLabel, LV_ALIGN_TOP_LEFT, 5, 5);
     lv_label_set_text(midSatsLabel, "Sats. --");
 
-    // GPS status under sats (same position as main screen's status)
-    midGpsStatusLabel = lv_label_create(midPage);
-    lv_obj_set_style_text_font(midGpsStatusLabel, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(midGpsStatusLabel, grey, 0);
-    lv_obj_align(midGpsStatusLabel, LV_ALIGN_TOP_LEFT, 105, 5);
-    lv_label_set_text(midGpsStatusLabel, "(No Fix)");
-
     // Speed display at top center (same style as recent max on first screen)
-    midSpeedLabel = lv_label_create(midPage);
+    midSpeedLabel = lv_label_create(driveStats);
     lv_obj_set_style_text_font(midSpeedLabel, &RobotoBlack_60, 0);
     lv_obj_set_style_text_color(midSpeedLabel, lv_color_white(), 0);
     lv_obj_align(midSpeedLabel, LV_ALIGN_TOP_LEFT, 200, 5);
     lv_label_set_text(midSpeedLabel, "0.0");
 
     // mph units label
-    midSpeedUnits = lv_label_create(midPage);
+    midSpeedUnits = lv_label_create(driveStats);
     lv_obj_set_style_text_font(midSpeedUnits, &lv_font_montserrat_34, 0);
     lv_obj_set_style_text_color(midSpeedUnits, grey, 0);
-    lv_obj_align(midSpeedUnits, LV_ALIGN_TOP_LEFT, 300, 10);
+    lv_obj_align(midSpeedUnits, LV_ALIGN_TOP_LEFT, 300, 15);
     lv_label_set_text(midSpeedUnits, "mph");
+
+    // Horizontal line under speed display
+    lv_obj_t *headerLine = lv_line_create(driveStats);
+    static lv_point_t headerLinePoints[] = {{0, 0}, {480, 0}};
+    lv_line_set_points(headerLine, headerLinePoints, 2);
+    lv_obj_set_style_line_color(headerLine, grey, 0);
+    lv_obj_set_style_line_width(headerLine, 4, 0);
+    lv_obj_align(headerLine, LV_ALIGN_TOP_MID, 0, 70);
+
+    // Vertical divider line splitting page in half
+    lv_obj_t *dividerLine = lv_line_create(driveStats);
+    static lv_point_t dividerLinePoints[] = {{0, 0}, {0, 120}};
+    lv_line_set_points(dividerLine, dividerLinePoints, 2);
+    lv_obj_set_style_line_color(dividerLine, grey, 0);
+    lv_obj_set_style_line_width(dividerLine, 2, 0);
+    lv_obj_align(dividerLine, LV_ALIGN_TOP_MID, 0, 100);
+
+    // 0-60 time display (left side below divider)
+    driveStatsZeroToSixty = lv_label_create(driveStats);
+    lv_obj_set_style_text_font(driveStatsZeroToSixty, &RobotoBlack_60, 0);
+    lv_obj_set_style_text_color(driveStatsZeroToSixty, lv_color_white(), 0);
+    lv_obj_align(driveStatsZeroToSixty, LV_ALIGN_TOP_LEFT, 20, 87);
+    lv_label_set_text(driveStatsZeroToSixty, "0.00");
+
+    // 0-60 units label
+    driveStatsZeroToSixtyUnits = lv_label_create(driveStats);
+    lv_obj_set_style_text_font(driveStatsZeroToSixtyUnits, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(driveStatsZeroToSixtyUnits, grey, 0);
+    lv_obj_align(driveStatsZeroToSixtyUnits, LV_ALIGN_TOP_LEFT, 150, 110);
+    lv_label_set_text(driveStatsZeroToSixtyUnits, "s (0-60)");
 }
 
 void Display::createInfoPage()
@@ -265,10 +282,9 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
             lv_color_t labelColor = shouldFade ? darkGrey : grey;
 
             lv_obj_set_style_text_color(TopLabel, labelColor, 0);
-            lv_obj_set_style_text_color(TopUnits, color, 0);
             lv_obj_set_style_text_color(BottomUnits, color, 0);
             lv_obj_set_style_text_color(BottomLabel, labelColor, 0);
-            lv_obj_set_style_text_color(TopVariable, color, 0);
+            lv_obj_set_style_text_color(clockDisplay, color, 0);
             lv_obj_set_style_text_color(BottomVariable, color, 0);
             lv_obj_set_style_text_color(AuxVariable, color, 0);
 
@@ -325,16 +341,13 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
         {
             lv_obj_set_style_text_color(AuxVariable, hdopStateColor, 0);
             lv_label_set_text_fmt(AuxVariable, "%s", hdopStateLabel);
-            // Mirror GPS status to middle page
-            if (midGpsStatusLabel)
-            {
-                lv_obj_set_style_text_color(midGpsStatusLabel, hdopStateColor, 0);
-                lv_label_set_text_fmt(midGpsStatusLabel, "%s", hdopStateLabel);
-            }
             lastHdopState = hdopState;
         }
 
-        lv_label_set_text_fmt(TopVariable, "%.2f", zeroToSixtyTime);
+        if (driveStatsZeroToSixty)
+        {
+            lv_label_set_text_fmt(driveStatsZeroToSixty, "%.2f", zeroToSixtyTime);
+        }
 
         if (debug == 1)
         {
@@ -361,6 +374,18 @@ void Display::updateSpeedAnimation(float targetSpeed)
     {
         speedInt--;
         lv_label_set_text_fmt(MainVariable, "%u", speedInt);
+    }
+}
+
+void Display::updateTimeDisplay(bool timeValid, int hour, int minute)
+{
+    if (timeValid)
+    {
+        lv_label_set_text_fmt(clockDisplay, "%02d:%02d", hour, minute);
+    }
+    else
+    {
+        lv_label_set_text(clockDisplay, "--:--");
     }
 }
 
@@ -422,15 +447,14 @@ void Display::startUpScreen()
     Serial.println("Startup Screen");
 
     lv_obj_set_style_text_color(TopLabel, darkGrey, 0);
-    lv_obj_set_style_text_color(TopUnits, darkGrey, 0);
     lv_obj_set_style_text_color(BottomUnits, darkGrey, 0);
     lv_obj_set_style_text_color(BottomLabel, darkGrey, 0);
-    lv_obj_set_style_text_color(TopVariable, darkGrey, 0);
+    lv_obj_set_style_text_color(clockDisplay, darkGrey, 0);
     lv_obj_set_style_text_color(BottomVariable, darkGrey, 0);
     lv_obj_set_style_text_color(AuxVariable, darkGrey, 0);
 
     lv_label_set_text_fmt(BottomVariable, "0.00");
-    lv_label_set_text_fmt(TopVariable, "0.00");
+    lv_label_set_text(clockDisplay, "00:00");
 
     for (int i = 0; i <= 100; i += 5)
     {
@@ -447,10 +471,9 @@ void Display::startUpScreen()
     }
 
     lv_obj_set_style_text_color(TopLabel, grey, 0);
-    lv_obj_set_style_text_color(TopUnits, lv_color_white(), 0);
     lv_obj_set_style_text_color(BottomUnits, lv_color_white(), 0);
     lv_obj_set_style_text_color(BottomLabel, grey, 0);
-    lv_obj_set_style_text_color(TopVariable, lv_color_white(), 0);
+    lv_obj_set_style_text_color(clockDisplay, lv_color_white(), 0);
     lv_obj_set_style_text_color(BottomVariable, lv_color_white(), 0);
     lv_obj_set_style_text_color(AuxVariable, darkGrey, 0);
 

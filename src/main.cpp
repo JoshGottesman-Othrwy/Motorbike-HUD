@@ -112,6 +112,25 @@ void loop()
             gpsModule.getGpsSats(),
             gpsModule.getZeroToSixtyTime());
 
+        // Update time display
+        if (gpsModule.getGPS().time.isValid() && gpsModule.getGPS().date.isValid())
+        {
+            int utcHour = gpsModule.getGPS().time.hour();
+            int localHour = utcHour;
+            bool dst = gpsModule.getUKDST(gpsModule.getGPS().date.year(), gpsModule.getGPS().date.month(),
+                                          gpsModule.getGPS().date.day(), utcHour);
+            localHour += dst ? 2 : 1;
+            if (localHour >= 24)
+                localHour -= 24;
+            if (localHour < 0)
+                localHour += 24;
+            display.updateTimeDisplay(true, localHour, gpsModule.getGPS().time.minute());
+        }
+        else
+        {
+            display.updateTimeDisplay(false, 0, 0);
+        }
+
         // Update display refresh rate based on GPS fix status
         display.setFirstFix(gpsModule.isFirstFix());
     }
