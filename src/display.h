@@ -46,7 +46,7 @@ private:
     int speedInt = 0;
 
     // Update frequencies
-    uint32_t updateDisplayInterval = 33;
+    uint32_t updateDisplayInterval = 16; // ~60fps for smoother animations
     uint32_t prevDispUpdate = 0;
     uint32_t updateSpeed = 100;
     uint32_t prevSpeedUpdate = 0;

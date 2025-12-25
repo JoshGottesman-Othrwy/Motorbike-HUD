@@ -124,9 +124,12 @@ void GPS::loop()
     if (!gpsConfigured)
         return;
 
-    while (gpsSerial.available())
+    // Limit serial reads to prevent blocking UI - process max 50 chars per loop
+    int bytesRead = 0;
+    while (gpsSerial.available() && bytesRead < 50)
     {
         gps.encode(gpsSerial.read());
+        bytesRead++;
     }
 
     // Debug GPS communication every 5 seconds

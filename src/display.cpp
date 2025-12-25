@@ -259,8 +259,7 @@ void Display::createInfoPage()
 
 void Display::loop()
 {
-    // Handle display updates in the main loop
-    lv_task_handler();
+    // lv_task_handler() now called at start of main loop for better responsiveness
 }
 
 void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime)

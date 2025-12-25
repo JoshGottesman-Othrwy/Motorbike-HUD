@@ -74,6 +74,9 @@ void setup(void)
 
 void loop()
 {
+    // Call LVGL task handler first for responsive UI
+    lv_task_handler();
+
     // Call each module's loop function
     gpsModule.loop();
     acc.loop();
@@ -134,9 +137,6 @@ void loop()
         // Update display refresh rate based on GPS fix status
         display.setFirstFix(gpsModule.isFirstFix());
     }
-
-    // Handle display updates - always call loop() so button events can be processed
-    display.loop();
 
     // Handle button presses (example functionality)
     if (button.wasPressed())
