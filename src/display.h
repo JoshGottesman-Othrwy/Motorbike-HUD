@@ -33,6 +33,7 @@ private:
     lv_obj_t *wifiIPLabel;
     lv_obj_t *moduleGPSLabel;
     lv_obj_t *moduleIMULabel;
+    lv_obj_t *moduleMagnetometerLabel;
     lv_obj_t *midSatsLabel;
     lv_obj_t *midSpeedLabel;
     lv_obj_t *midSpeedUnits;
@@ -78,7 +79,7 @@ public:
     void updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime);
     void updateTimeDisplay(bool timeValid, int hour, int minute);
     void updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status);
-    void updateModuleStatus(bool gpsDetected, bool imuDetected);
+    void updateModuleStatus(bool gpsDetected, bool imuDetected, bool magnetometerDetected);
     void setFirstFix(bool hasFix);
     void setBrightness(uint8_t brightness);
 

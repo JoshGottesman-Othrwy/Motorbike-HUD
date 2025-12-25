@@ -96,7 +96,8 @@ void loop()
         // Update module status
         display.updateModuleStatus(
             gpsModule.isConfigured(),
-            false); // IMU not yet implemented
+            false,                // IMU not yet implemented
+            acc.isInitialized()); // Magnetometer status
 
         lastWiFiUpdate = millis();
     }

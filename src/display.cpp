@@ -250,11 +250,17 @@ void Display::createInfoPage()
     lv_label_set_text(moduleGPSLabel, "GPS: Not detected");
     lv_obj_align(moduleGPSLabel, LV_ALIGN_TOP_LEFT, 10, 240);
 
+    moduleMagnetometerLabel = lv_label_create(infoPage);
+    lv_obj_set_style_text_font(moduleMagnetometerLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(moduleMagnetometerLabel, grey, 0);
+    lv_label_set_text(moduleMagnetometerLabel, "Magnetometer: Not detected");
+    lv_obj_align(moduleMagnetometerLabel, LV_ALIGN_TOP_LEFT, 10, 270);
+
     moduleIMULabel = lv_label_create(infoPage);
     lv_obj_set_style_text_font(moduleIMULabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(moduleIMULabel, grey, 0);
     lv_label_set_text(moduleIMULabel, "IMU: Not detected");
-    lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 270);
+    lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 300);
 }
 
 void Display::loop()
@@ -406,7 +412,7 @@ void Display::updateWiFiInfo(bool connected, const char *ssid, const char *ip, c
     }
 }
 
-void Display::updateModuleStatus(bool gpsDetected, bool imuDetected)
+void Display::updateModuleStatus(bool gpsDetected, bool imuDetected, bool magnetometerDetected)
 {
     if (gpsDetected)
     {
@@ -428,6 +434,17 @@ void Display::updateModuleStatus(bool gpsDetected, bool imuDetected)
     {
         lv_obj_set_style_text_color(moduleIMULabel, red, 0);
         lv_label_set_text(moduleIMULabel, "IMU: Not detected");
+    }
+
+    if (magnetometerDetected)
+    {
+        lv_obj_set_style_text_color(moduleMagnetometerLabel, green, 0);
+        lv_label_set_text(moduleMagnetometerLabel, "Magnetometer: Detected");
+    }
+    else
+    {
+        lv_obj_set_style_text_color(moduleMagnetometerLabel, red, 0);
+        lv_label_set_text(moduleMagnetometerLabel, "Magnetometer: Not detected");
     }
 }
 
