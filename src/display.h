@@ -12,6 +12,7 @@ private:
     // Tileview and pages
     lv_obj_t *tileview;
     lv_obj_t *speedPage;
+    lv_obj_t *midPage;
     lv_obj_t *infoPage;
 
     // UI Elements
@@ -32,6 +33,10 @@ private:
     lv_obj_t *wifiIPLabel;
     lv_obj_t *moduleGPSLabel;
     lv_obj_t *moduleIMULabel;
+    lv_obj_t *midSatsLabel;
+    lv_obj_t *midGpsStatusLabel;
+    lv_obj_t *midSpeedLabel;
+    lv_obj_t *midSpeedUnits;
 
     // Display state
     bool isFaded = false;
@@ -58,6 +63,7 @@ private:
     void initializeColors();
     void createTileview();
     void createUIElements();
+    void createMiddlePage();
     void createInfoPage();
     void startUpScreen();
     void updateSpeedAnimation(float targetSpeed);

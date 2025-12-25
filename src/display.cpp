@@ -40,6 +40,9 @@ bool Display::begin()
     // Create UI elements
     createUIElements();
 
+    // Create middle page
+    createMiddlePage();
+
     // Create info page
     createInfoPage();
 
@@ -66,12 +69,16 @@ void Display::createTileview()
     tileview = lv_tileview_create(lv_scr_act());
     lv_obj_set_style_bg_color(tileview, lv_color_black(), 0);
 
-    // Create main speed page (tile 0, 0) - can swipe right to info
+    // Create main speed page (tile 0, 0) - can swipe right to middle page
     speedPage = lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT);
     lv_obj_set_style_bg_color(speedPage, lv_color_black(), 0);
 
-    // Create info page (tile 1, 0) - can swipe left back to speed
-    infoPage = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT);
+    // Create middle blank page (tile 1, 0) - can swipe left to speed or right to info
+    midPage = lv_tileview_add_tile(tileview, 1, 0, LV_DIR_LEFT | LV_DIR_RIGHT);
+    lv_obj_set_style_bg_color(midPage, lv_color_black(), 0);
+
+    // Create info page (tile 2, 0) - can swipe left back to middle page
+    infoPage = lv_tileview_add_tile(tileview, 2, 0, LV_DIR_LEFT);
     lv_obj_set_style_bg_color(infoPage, lv_color_black(), 0);
 }
 
@@ -137,6 +144,37 @@ void Display::createUIElements()
     lv_label_set_text_fmt(TopUnits, "s (0-60)");
     lv_label_set_text_fmt(BottomUnits, "mph");
     lv_label_set_text_fmt(MainUnits, "mph");
+}
+
+void Display::createMiddlePage()
+{
+    // Sat status in top-left (mirrors main screen label)
+    midSatsLabel = lv_label_create(midPage);
+    lv_obj_set_style_text_font(midSatsLabel, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(midSatsLabel, lv_color_white(), 0);
+    lv_obj_align(midSatsLabel, LV_ALIGN_TOP_LEFT, 5, 5);
+    lv_label_set_text(midSatsLabel, "Sats. --");
+
+    // GPS status under sats (same position as main screen's status)
+    midGpsStatusLabel = lv_label_create(midPage);
+    lv_obj_set_style_text_font(midGpsStatusLabel, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(midGpsStatusLabel, grey, 0);
+    lv_obj_align(midGpsStatusLabel, LV_ALIGN_TOP_LEFT, 105, 5);
+    lv_label_set_text(midGpsStatusLabel, "(No Fix)");
+
+    // Speed display at top center (same style as recent max on first screen)
+    midSpeedLabel = lv_label_create(midPage);
+    lv_obj_set_style_text_font(midSpeedLabel, &RobotoBlack_60, 0);
+    lv_obj_set_style_text_color(midSpeedLabel, lv_color_white(), 0);
+    lv_obj_align(midSpeedLabel, LV_ALIGN_TOP_LEFT, 200, 5);
+    lv_label_set_text(midSpeedLabel, "0.0");
+
+    // mph units label
+    midSpeedUnits = lv_label_create(midPage);
+    lv_obj_set_style_text_font(midSpeedUnits, &lv_font_montserrat_34, 0);
+    lv_obj_set_style_text_color(midSpeedUnits, grey, 0);
+    lv_obj_align(midSpeedUnits, LV_ALIGN_TOP_LEFT, 300, 10);
+    lv_label_set_text(midSpeedUnits, "mph");
 }
 
 void Display::createInfoPage()
@@ -239,6 +277,14 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
 
         lv_label_set_text_fmt(BottomVariable, "%.1f", speedMax);
         lv_label_set_text_fmt(TopLabel, "Sats. %u", sats);
+        if (midSatsLabel)
+        {
+            lv_label_set_text_fmt(midSatsLabel, "Sats. %u", sats);
+        }
+        if (midSpeedLabel)
+        {
+            lv_label_set_text_fmt(midSpeedLabel, "%.1f", speed);
+        }
 
         int hdopState;
         lv_color_t hdopStateColor;
@@ -279,6 +325,12 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
         {
             lv_obj_set_style_text_color(AuxVariable, hdopStateColor, 0);
             lv_label_set_text_fmt(AuxVariable, "%s", hdopStateLabel);
+            // Mirror GPS status to middle page
+            if (midGpsStatusLabel)
+            {
+                lv_obj_set_style_text_color(midGpsStatusLabel, hdopStateColor, 0);
+                lv_label_set_text_fmt(midGpsStatusLabel, "%s", hdopStateLabel);
+            }
             lastHdopState = hdopState;
         }
 
