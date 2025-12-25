@@ -118,7 +118,7 @@ void Display::createUIElements()
     clockDisplay = lv_label_create(speedPage);
     lv_obj_set_style_text_font(clockDisplay, &RobotoBlack_60, 0);
     lv_obj_set_style_text_color(clockDisplay, lv_color_white(), 0);
-    lv_obj_align(clockDisplay, LV_ALIGN_BOTTOM_RIGHT, -350, -150);
+    lv_obj_align(clockDisplay, LV_ALIGN_BOTTOM_RIGHT, -350, -130);
 
     BottomVariable = lv_label_create(speedPage);
     lv_obj_set_style_text_font(BottomVariable, &RobotoBlack_60, 0);
