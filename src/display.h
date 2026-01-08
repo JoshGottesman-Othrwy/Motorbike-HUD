@@ -1,89 +1,40 @@
 #pragma once
 #include <Arduino.h>
 #include <LilyGo_AMOLED.h>
-#include <LV_Helper.h>
+#include "ui/lvgl/LV_Helper.h"
+#include "ui/PageManager.h"
 
+/**
+ * Display class - handles hardware initialization and delegates UI to PageManager.
+ * This is now a thin wrapper around the hardware and PageManager.
+ */
 class Display
 {
 private:
-    // Display objects
     LilyGo_AMOLED amoled;
-
-    // Tileview and pages
-    lv_obj_t *tileview;
-    lv_obj_t *speedPage;
-    lv_obj_t *driveStats;
-    lv_obj_t *infoPage;
-
-    // UI Elements
-    lv_obj_t *TopLabel;
-    lv_obj_t *BottomLabel;
-    lv_obj_t *TopUnits;
-    lv_obj_t *BottomUnits;
-    lv_obj_t *MainVariable;
-    lv_obj_t *AuxVariable;
-    lv_obj_t *MainUnits;
-    lv_obj_t *clockDisplay;
-    lv_obj_t *BottomVariable;
-    lv_obj_t *debugDisp;
-
-    // Info page elements
-    lv_obj_t *wifiStatusLabel;
-    lv_obj_t *wifiSSIDLabel;
-    lv_obj_t *wifiIPLabel;
-    lv_obj_t *moduleGPSLabel;
-    lv_obj_t *moduleIMULabel;
-    lv_obj_t *moduleMagnetometerLabel;
-    lv_obj_t *midSatsLabel;
-    lv_obj_t *midSpeedLabel;
-    lv_obj_t *midSpeedUnits;
-    lv_obj_t *driveStatsZeroToSixty;
-    lv_obj_t *driveStatsZeroToSixtyUnits;
-
-    // Display state
-    bool isFaded = false;
-    int lastHdopState = -1;
-    bool debug = false;
-    int speedInt = 0;
-
-    // Update frequencies
-    uint32_t updateDisplayInterval = 16; // ~60fps for smoother animations
-    uint32_t prevDispUpdate = 0;
-    uint32_t updateSpeed = 100;
-    uint32_t prevSpeedUpdate = 0;
-
-    // Colors
-    lv_color_t grey;
-    lv_color_t darkGrey;
-    lv_color_t veryDarkGrey;
-    lv_color_t green;
-    lv_color_t yellow;
-    lv_color_t orange;
-    lv_color_t red;
-
-    // Private methods
-    void initializeColors();
-    void createTileview();
-    void createUIElements();
-    void createDrivingStatsPage();
-    void createInfoPage();
-    void updateSpeedAnimation(float targetSpeed);
 
 public:
     Display();
-    bool begin();
-    void loop();
 
-    // Public methods to update display data
-    void updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime);
-    void setSpeedDisplayNoFix();
-    void setGPSStarting();
-    void updateTimeDisplay(bool timeValid, int hour, int minute);
-    void updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status);
-    void updateModuleStatus(bool gpsDetected, bool imuDetected, bool magnetometerDetected);
-    void setFirstFix(bool hasFix);
+    /**
+     * Initialize the display hardware and all pages.
+     * Returns true on success.
+     */
+    bool begin();
+
+    /**
+     * Update the display - call this from the main loop.
+     * Delegates to PageManager to update the current page.
+     */
+    void update();
+
+    /**
+     * Set display brightness (0-255).
+     */
     void setBrightness(uint8_t brightness);
 
-    // Getter for amoled object (needed for button integration)
+    /**
+     * Get reference to the AMOLED object (if needed for advanced features).
+     */
     LilyGo_AMOLED &getAmoled() { return amoled; }
 };
