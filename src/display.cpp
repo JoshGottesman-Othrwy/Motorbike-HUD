@@ -46,8 +46,7 @@ bool Display::begin()
     // Create info page
     createInfoPage();
 
-    // Run startup screen
-    startUpScreen();
+    // Boot animation removed for faster startup
 
     return true;
 }
@@ -131,6 +130,12 @@ void Display::createUIElements()
     lv_obj_align(debugDisp, LV_ALIGN_TOP_RIGHT, 0, 0);
 
     lv_obj_clear_flag(debugDisp, LV_OBJ_FLAG_HIDDEN);
+
+    // Initialize display values to prevent 'Text' from showing
+    lv_label_set_text(MainVariable, "00");        // Speed starts as no GPS fix
+    lv_label_set_text(BottomVariable, "0.0");     // Recent Max starts at 0
+    lv_label_set_text(clockDisplay, "00:00");     // Clock starts as no time
+    lv_label_set_text(debugDisp, "initialising"); // Debug starts as space
 
     // Create Static Labels
     lv_label_set_text_fmt(TopLabel, "Sats.");
@@ -370,6 +375,12 @@ void Display::updateGPSData(float speed, float speedMax, float hdop, int sats, f
 
 void Display::updateSpeedAnimation(float targetSpeed)
 {
+    // If we were in no-fix state (-1), reset to 0 before animating
+    if (speedInt == -1)
+    {
+        speedInt = 0;
+    }
+
     if (speedInt < round(targetSpeed))
     {
         speedInt++;
@@ -382,6 +393,21 @@ void Display::updateSpeedAnimation(float targetSpeed)
     }
 }
 
+void Display::setSpeedDisplayNoFix()
+{
+    // Set speed display to dash when no GPS fix
+    lv_label_set_text(MainVariable, "00");
+    speedInt = -1; // Use -1 to indicate no GPS fix state
+}
+
+void Display::setGPSStarting()
+{
+    // Set status to 'Starting' in yellow during GPS initialization
+    lv_obj_set_style_text_color(AuxVariable, yellow, 0);
+    lv_label_set_text(AuxVariable, "(Starting)");
+    lastHdopState = -2; // Use -2 to indicate starting state, different from -1 (no state)
+}
+
 void Display::updateTimeDisplay(bool timeValid, int hour, int minute)
 {
     if (timeValid)
@@ -390,7 +416,7 @@ void Display::updateTimeDisplay(bool timeValid, int hour, int minute)
     }
     else
     {
-        lv_label_set_text(clockDisplay, "--:--");
+        lv_label_set_text(clockDisplay, "00:00");
     }
 }
 
@@ -450,48 +476,10 @@ void Display::updateModuleStatus(bool gpsDetected, bool imuDetected, bool magnet
 
 void Display::setFirstFix(bool hasFix)
 {
-    updateDisplayInterval = hasFix ? 33 : 2000; // update display frequency on fix
+    // GPS fix status no longer affects refresh rate - maintaining fixed rate
 }
 
 void Display::setBrightness(uint8_t brightness)
 {
     amoled.setBrightness(brightness);
-}
-
-void Display::startUpScreen()
-{
-    Serial.println("Startup Screen");
-
-    lv_obj_set_style_text_color(TopLabel, darkGrey, 0);
-    lv_obj_set_style_text_color(BottomUnits, darkGrey, 0);
-    lv_obj_set_style_text_color(BottomLabel, darkGrey, 0);
-    lv_obj_set_style_text_color(clockDisplay, darkGrey, 0);
-    lv_obj_set_style_text_color(BottomVariable, darkGrey, 0);
-    lv_obj_set_style_text_color(AuxVariable, darkGrey, 0);
-
-    lv_label_set_text_fmt(BottomVariable, "0.00");
-    lv_label_set_text(clockDisplay, "00:00");
-
-    for (int i = 0; i <= 100; i += 5)
-    {
-        lv_label_set_text_fmt(MainVariable, "%u", i);
-        lv_task_handler();
-        delay(10);
-    }
-
-    for (int i = 100; i >= 0; i -= 5)
-    {
-        lv_label_set_text_fmt(MainVariable, "%u", i);
-        lv_task_handler();
-        delay(10);
-    }
-
-    lv_obj_set_style_text_color(TopLabel, grey, 0);
-    lv_obj_set_style_text_color(BottomUnits, lv_color_white(), 0);
-    lv_obj_set_style_text_color(BottomLabel, grey, 0);
-    lv_obj_set_style_text_color(clockDisplay, lv_color_white(), 0);
-    lv_obj_set_style_text_color(BottomVariable, lv_color_white(), 0);
-    lv_obj_set_style_text_color(AuxVariable, darkGrey, 0);
-
-    updateDisplayInterval = 2000; // Start with very low screen refresh until gps fix
 }

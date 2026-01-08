@@ -264,23 +264,13 @@ void GPS::displayInfo()
     Serial.print(F(" "));
     if (gps.time.isValid() && gps.date.isValid())
     {
-        // Calculate local time using UK DST rules
+        // Display UTC time (GPS satellites provide UTC time)
         int utcHour = gps.time.hour();
-        int localHour = utcHour;
         bool dst = isUKDST(gps.date.year(), gps.date.month(), gps.date.day(), utcHour);
 
-        // Add 1 hour for GMT (UK standard time) + 1 more if DST is active
-        localHour += dst ? 2 : 1;
-
-        // Handle hour overflow/underflow
-        if (localHour >= 24)
-            localHour -= 24;
-        if (localHour < 0)
-            localHour += 24;
-
-        if (localHour < 10)
+        if (utcHour < 10)
             Serial.print(F("0"));
-        Serial.print(localHour);
+        Serial.print(utcHour);
         Serial.print(F(":"));
         if (gps.time.minute() < 10)
             Serial.print(F("0"));
@@ -293,7 +283,9 @@ void GPS::displayInfo()
         if (gps.time.centisecond() < 10)
             Serial.print(F("0"));
         Serial.print(gps.time.centisecond());
-        Serial.print(dst ? F(" BST") : F(" GMT"));
+        Serial.print(F(" UTC ("));
+        Serial.print(dst ? F("BST") : F("GMT"));
+        Serial.print(F(" conversion handled in display)"));
     }
     else
     {

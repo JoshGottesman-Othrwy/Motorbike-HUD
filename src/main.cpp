@@ -37,12 +37,24 @@ void setup(void)
         }
     }
 
+    // Show immediate feedback that display is working
+    Serial.println("Display ready - showing startup status");
+    display.setGPSStarting(); // Show 'Starting' status in yellow
+    lv_task_handler();        // Process LVGL tasks to actually show the status
+
     // Initialize other modules
+    Serial.print("Initializing GPS... ");
     bool gpsOk = gpsModule.begin();
+    Serial.println(gpsOk ? "OK" : "FAILED");
+
+    Serial.print("Initializing Accelerometer... ");
     bool accOk = acc.begin();
+    Serial.println(accOk ? "OK" : "FAILED");
 
     // Button needs reference to the display's amoled object
+    Serial.print("Initializing Buttons... ");
     bool buttonOk = button.begin(display.getAmoled());
+    Serial.println(buttonOk ? "OK" : "FAILED");
 
     if (!gpsOk)
     {
@@ -60,13 +72,18 @@ void setup(void)
     }
 
     // Initialize WiFi and OTA Updates
+    Serial.println("Setting up WiFi networks...");
     // Add your network credentials here
-    wifiManager.addNetwork("Livebox-7D40", "qHyiY3LATUsdc3SiJK");
+    // wifiManager.addNetwork("Livebox-7D40", "qHyiY3LATUsdc3SiJK");
     wifiManager.addNetwork("Home Wifi", "OrangeMonkeyEagle");
+    // wifiManager.addNetwork("Other Way - Guest", "Eng1neer1ng Th4t M4tters");
     // Add more networks as needed
 
     // Optional: Remove the comment below to enable WiFi startup
-    wifiManager.begin();
+    Serial.print("Starting WiFi... ");
+    bool wifiOk = wifiManager.begin();
+    Serial.println(wifiOk ? "OK" : "FAILED");
+    lv_task_handler(); // Update display after WiFi init
 
     upTime = millis();
     Serial.println("System initialized successfully!");
@@ -105,16 +122,26 @@ void loop()
     // Update display with GPS data
     if (gpsModule.isConfigured())
     {
-        // Add speed offset if needed
-        gpsModule.addSpeedOffset(myNumber);
+        // Check if GPS location is valid (has fix)
+        if (gpsModule.isLocationValid())
+        {
+            // Add speed offset if needed
+            gpsModule.addSpeedOffset(myNumber);
 
-        // Update display with current GPS data
-        display.updateGPSData(
-            gpsModule.getSpeed(),
-            gpsModule.getSpeedMax(),
-            gpsModule.getGpsHDOP(),
-            gpsModule.getGpsSats(),
-            gpsModule.getZeroToSixtyTime());
+            // Update display with current GPS data
+            display.updateGPSData(
+                gpsModule.getSpeed(),
+                gpsModule.getSpeedMax(),
+                gpsModule.getGpsHDOP(),
+                gpsModule.getGpsSats(),
+                gpsModule.getZeroToSixtyTime());
+        }
+        else
+        {
+            // No GPS fix - show dash for speed and no fix status
+            display.setSpeedDisplayNoFix();
+            display.updateGPSData(0.0, 0.0, 100.0, 0, 0.0); // Show no fix state
+        }
 
         // Update time display
         if (gpsModule.getGPS().time.isValid() && gpsModule.getGPS().date.isValid())
@@ -135,8 +162,32 @@ void loop()
             display.updateTimeDisplay(false, 0, 0);
         }
 
-        // Update display refresh rate based on GPS fix status
-        display.setFirstFix(gpsModule.isFirstFix());
+        // Note: Display refresh rate is now fixed regardless of GPS status
+    }
+    else
+    {
+        // GPS not configured - show no GPS state
+        display.setSpeedDisplayNoFix();
+        static unsigned long lastNoGPSUpdate = 0;
+        static unsigned long lastDebugUpdate = 0;
+        
+        // Update GPS data every second when no GPS
+        if (millis() - lastNoGPSUpdate > 1000)
+        {
+            display.updateGPSData(0.0, 0.0, 100.0, 0, 0.0); // Show "Sats. 0" and "No Fix"
+            display.updateTimeDisplay(false, 0, 0);
+            lastNoGPSUpdate = millis();
+        }
+        
+        // Keep debug display flashing at normal rate even without GPS
+        if (millis() - lastDebugUpdate > 16) // Same as normal updateDisplayInterval
+        {
+            // Simple debug toggle without full GPS data update
+            static bool debugState = false;
+            debugState = !debugState;
+            // Note: This is a workaround - ideally we'd have a separate debug update method
+            lastDebugUpdate = millis();
+        }
     }
 
     // Handle button presses (example functionality)

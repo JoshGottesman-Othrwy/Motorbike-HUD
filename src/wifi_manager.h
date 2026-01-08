@@ -16,8 +16,19 @@ private:
     std::vector<NetworkCredentials> networks;
     bool isConnected = false;
     unsigned long lastConnectionAttempt = 0;
-    const unsigned long connectionRetryInterval = 30000; // 30 seconds
+    const unsigned long connectionRetryInterval = 60000; // 60 seconds
     String statusMessage = "Not started";
+
+    // Non-blocking connection state
+    enum ConnectionState
+    {
+        IDLE,
+        CONNECTING,
+        WAITING_FOR_RESULT
+    } connectionState = IDLE;
+    size_t currentNetworkIndex = 0;
+    unsigned long connectionStartTime = 0;
+    const unsigned long connectionTimeout = 10000; // 10 seconds per network
 
     // OTA Update state
     bool otaInProgress = false;
@@ -25,6 +36,7 @@ private:
 
     // Private methods
     void setupOTA();
+    void handleConnection();
     void handleOTAStart();
     void handleOTAEnd();
     void handleOTAProgress(unsigned int progress, unsigned int total);

@@ -67,7 +67,6 @@ private:
     void createUIElements();
     void createDrivingStatsPage();
     void createInfoPage();
-    void startUpScreen();
     void updateSpeedAnimation(float targetSpeed);
 
 public:
@@ -77,6 +76,8 @@ public:
 
     // Public methods to update display data
     void updateGPSData(float speed, float speedMax, float hdop, int sats, float zeroToSixtyTime);
+    void setSpeedDisplayNoFix();
+    void setGPSStarting();
     void updateTimeDisplay(bool timeValid, int hour, int minute);
     void updateWiFiInfo(bool connected, const char *ssid, const char *ip, const char *status);
     void updateModuleStatus(bool gpsDetected, bool imuDetected, bool magnetometerDetected);

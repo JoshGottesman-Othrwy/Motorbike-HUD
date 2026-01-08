@@ -35,10 +35,10 @@ bool WiFiManager::begin()
     WiFi.mode(WIFI_STA);
     WiFi.onEvent([](WiFiEvent_t event)
                  {
-        if (event == SYSTEM_EVENT_STA_GOT_IP) {
+        if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
             Serial.print("WiFi connected! IP: ");
             Serial.println(WiFi.localIP());
-        } else if (event == SYSTEM_EVENT_STA_DISCONNECTED) {
+        } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
             Serial.println("WiFi disconnected");
         } });
 
@@ -58,44 +58,68 @@ bool WiFiManager::connect()
         return false;
     }
 
-    lastConnectionAttempt = currentTime;
-
-    statusMessage = "Attempting to connect";
-    Serial.println("Attempting to connect to WiFi networks...");
-
-    for (size_t i = 0; i < networks.size(); i++)
+    // Start non-blocking connection attempt
+    if (connectionState == IDLE)
     {
-        const char *ssid = networks[i].ssid;
-        const char *password = networks[i].password;
+        lastConnectionAttempt = currentTime;
+        currentNetworkIndex = 0;
+        connectionState = CONNECTING;
+        statusMessage = "Attempting to connect";
+        Serial.println("Attempting to connect to WiFi networks...");
+    }
 
-        statusMessage = String("Trying: ") + ssid;
-        Serial.printf("Trying: %s\n", ssid);
+    return false; // Will return true when actually connected via handleConnection()
+}
 
-        WiFi.begin(ssid, password);
+void WiFiManager::handleConnection()
+{
+    unsigned long currentTime = millis();
 
-        // Wait up to 10 seconds for connection
-        int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 15)
+    switch (connectionState)
+    {
+    case IDLE:
+        break;
+
+    case CONNECTING:
+        if (currentNetworkIndex < networks.size())
         {
-            delay(500);
-            Serial.print(".");
-            attempts++;
-        }
-        Serial.println();
+            const char *ssid = networks[currentNetworkIndex].ssid;
+            const char *password = networks[currentNetworkIndex].password;
 
+            statusMessage = String("Trying: ") + ssid;
+            Serial.printf("Trying: %s\n", ssid);
+
+            WiFi.begin(ssid, password);
+            connectionStartTime = currentTime;
+            connectionState = WAITING_FOR_RESULT;
+        }
+        else
+        {
+            // Tried all networks, failed
+            statusMessage = "Failed to connect";
+            Serial.println("Failed to connect to any network");
+            connectionState = IDLE;
+        }
+        break;
+
+    case WAITING_FOR_RESULT:
         if (WiFi.status() == WL_CONNECTED)
         {
             statusMessage = "Connected";
-            Serial.printf("Connected to: %s\n", ssid);
+            Serial.printf("Connected to: %s\n", networks[currentNetworkIndex].ssid);
             isConnected = true;
+            connectionState = IDLE;
             setupOTA();
-            return true;
         }
+        else if (currentTime - connectionStartTime > connectionTimeout)
+        {
+            // Timeout, try next network
+            Serial.println(" timeout");
+            currentNetworkIndex++;
+            connectionState = CONNECTING;
+        }
+        break;
     }
-
-    statusMessage = "Failed to connect";
-    Serial.println("Failed to connect to any network");
-    return false;
 }
 
 bool WiFiManager::disconnect()
@@ -221,8 +245,11 @@ void WiFiManager::handleOTAError(ota_error_t error)
 
 void WiFiManager::loop()
 {
+    // Handle non-blocking connection state machine
+    handleConnection();
+
     // Attempt to reconnect if disconnected
-    if (!isConnected && millis() - lastConnectionAttempt > connectionRetryInterval)
+    if (!isConnected && connectionState == IDLE)
     {
         connect();
     }
