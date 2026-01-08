@@ -170,7 +170,7 @@ void loop()
         display.setSpeedDisplayNoFix();
         static unsigned long lastNoGPSUpdate = 0;
         static unsigned long lastDebugUpdate = 0;
-        
+
         // Update GPS data every second when no GPS
         if (millis() - lastNoGPSUpdate > 1000)
         {
@@ -178,7 +178,7 @@ void loop()
             display.updateTimeDisplay(false, 0, 0);
             lastNoGPSUpdate = millis();
         }
-        
+
         // Keep debug display flashing at normal rate even without GPS
         if (millis() - lastDebugUpdate > 16) // Same as normal updateDisplayInterval
         {
