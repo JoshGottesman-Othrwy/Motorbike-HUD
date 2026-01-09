@@ -61,7 +61,10 @@ void SpeedPage::create()
 
 void SpeedPage::update()
 {
-    // Only update when page is active for efficiency
+    // Track recent max speed in the background (always runs)
+    trackRecentMaxSpeed();
+
+    // Only update display when page is active for efficiency
     if (!isPageActive)
     {
         return;
@@ -72,6 +75,7 @@ void SpeedPage::update()
     updateGPSStatusDisplay();
     updateClockDisplay();
     updateSpeedDisplay();
+    updateRecentMaxDisplay();
 }
 
 // ============================================================================
@@ -295,4 +299,76 @@ void SpeedPage::updateSpeedDisplay()
         lv_label_set_text_fmt(mainSpeed, "%ld", displayedSpeed);
         lastSpeedUpdate = now;
     }
+}
+
+// ============================================================================
+// RECENT MAX SPEED TRACKING
+// Runs in background regardless of page visibility
+// Records max speed when above 10 mph, resets when below 5 mph
+// ============================================================================
+void SpeedPage::trackRecentMaxSpeed()
+{
+    // Only track when GPS has valid data
+    if (!gps.hasFix() || !gps.isConnected())
+    {
+        return;
+    }
+
+    float currentSpeed = gps.getSpeedMph();
+
+    // Reset logic: if speed drops below 5 mph, reset session
+    if (currentSpeed < MAX_RESET_THRESHOLD)
+    {
+        if (isRecordingMax)
+        {
+            // Was recording, now stopped - reset for next session
+            isRecordingMax = false;
+            currentSessionMax = 0.0f;
+        }
+        return;
+    }
+
+    // Recording logic: if speed >= 10 mph, start/continue recording
+    if (currentSpeed >= MAX_RECORDING_THRESHOLD)
+    {
+        if (!isRecordingMax)
+        {
+            // Starting new recording session
+            isRecordingMax = true;
+            currentSessionMax = currentSpeed;
+            displayedRecentMax = currentSpeed; // Update displayed value when new session starts
+        }
+        else
+        {
+            // Continue recording, update max if higher
+            if (currentSpeed > currentSessionMax)
+            {
+                currentSessionMax = currentSpeed;
+                displayedRecentMax = currentSessionMax;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// RECENT MAX DISPLAY UPDATE
+// Only updates display label when value has changed (efficiency)
+// Rounds to nearest 0.1 mph
+// ============================================================================
+void SpeedPage::updateRecentMaxDisplay()
+{
+    // Round to nearest 0.1 mph for display
+    float roundedMax = roundf(displayedRecentMax * 10.0f) / 10.0f;
+
+    // Skip update if value hasn't changed (efficiency)
+    if (fabs(roundedMax - cachedRecentMaxDisplay) < 0.01f)
+    {
+        return;
+    }
+
+    // Update cache
+    cachedRecentMaxDisplay = roundedMax;
+
+    // Update display
+    lv_label_set_text_fmt(recentMaxValue, "%.1f", roundedMax);
 }

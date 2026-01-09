@@ -43,11 +43,21 @@ private:
     uint32_t lastSpeedUpdate = 0;                                // Last time speed display was incremented
     static constexpr uint32_t SPEED_INCREMENT_INTERVAL_MS = 100; // Tunable: animation speed
 
+    // Recent max speed tracking (works in background)
+    float currentSessionMax = 0.0f;                         // Max speed in current session (reset when speed < 5 mph)
+    float displayedRecentMax = 0.0f;                        // Value currently shown on display
+    float cachedRecentMaxDisplay = -1.0f;                   // For change detection on display updates
+    bool isRecordingMax = false;                            // True when speed >= 10 mph (recording active)
+    static constexpr float MAX_RECORDING_THRESHOLD = 10.0f; // Start recording above this speed (mph)
+    static constexpr float MAX_RESET_THRESHOLD = 5.0f;      // Reset session when below this speed (mph)
+
     // Helper methods for clean, readable code
     void updateSatelliteDisplay();
     void updateGPSStatusDisplay();
     void updateClockDisplay();
     void updateSpeedDisplay();
+    void trackRecentMaxSpeed();    // Runs in background (always)
+    void updateRecentMaxDisplay(); // Only updates display when visible
     lv_color_t getStatusColor(GPSStatus status);
     const char *getStatusText(GPSStatus status);
 
