@@ -102,34 +102,39 @@ void InfoPage::create()
     lv_obj_set_style_text_color(batteryPercentLabel, Theme::white(), 0);
     lv_label_set_text(batteryPercentLabel, "Charge: --%");
     lv_obj_align(batteryPercentLabel, LV_ALIGN_TOP_LEFT, 10, 440);
-
+    // Charging current (when charging)
+    batteryCurrentLabel = lv_label_create(tile);
+    lv_obj_set_style_text_font(batteryCurrentLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(batteryCurrentLabel, Theme::white(), 0);
+    lv_label_set_text(batteryCurrentLabel, "Current: --- mA");
+    lv_obj_align(batteryCurrentLabel, LV_ALIGN_TOP_LEFT, 10, 470);
     // Debug section header (moved down)
     lv_obj_t *debugHeader = lv_label_create(tile);
     lv_obj_set_style_text_font(debugHeader, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(debugHeader, Theme::yellow(), 0);
     lv_label_set_text(debugHeader, "Debug:");
-    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 500);
+    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 530);
 
     // Frame counter (moved down)
     debugFrameCounter = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFrameCounter, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFrameCounter, Theme::grey(), 0);
     lv_label_set_text(debugFrameCounter, "Frames: 0");
-    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 540);
+    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 570);
 
     // FPS display (moved down)
     debugFPS = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFPS, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFPS, Theme::grey(), 0);
     lv_label_set_text(debugFPS, "FPS: 0.0");
-    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 570);
+    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 600);
 
     // Uptime display (moved down)
     debugUptime = lv_label_create(tile);
     lv_obj_set_style_text_font(debugUptime, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugUptime, Theme::grey(), 0);
     lv_label_set_text(debugUptime, "Uptime: 0s");
-    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 600);
+    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 630);
 }
 
 void InfoPage::update()
@@ -196,9 +201,18 @@ void InfoPage::update()
     if (batteryVoltageLabel)
     {
         uint16_t voltage = amoled.getBattVoltage();
+        bool usbConnected = amoled.isVbusIn();
+
         if (voltage > 0)
         {
-            lv_label_set_text_fmt(batteryVoltageLabel, "Voltage: %.2fV", voltage / 1000.0f);
+            if (usbConnected)
+            {
+                lv_label_set_text_fmt(batteryVoltageLabel, "Voltage: %.2fV (Charging)", voltage / 1000.0f);
+            }
+            else
+            {
+                lv_label_set_text_fmt(batteryVoltageLabel, "Voltage: %.2fV", voltage / 1000.0f);
+            }
         }
         else
         {
@@ -211,7 +225,7 @@ void InfoPage::update()
     {
         uint16_t battVoltage = amoled.getBattVoltage();
         bool usbConnected = amoled.isVbusIn();
-        
+
         if (battVoltage == 0)
         {
             lv_label_set_text(batteryStatusLabel, "Status: No Battery");
@@ -233,41 +247,100 @@ void InfoPage::update()
     if (batteryPercentLabel)
     {
         uint16_t voltage = amoled.getBattVoltage();
+        bool usbConnected = amoled.isVbusIn();
+
         if (voltage > 0)
         {
-        float voltageFloat = voltage / 1000.0f;
+            if (usbConnected)
+            {
+                // During charging, voltage reading is not accurate for battery level
+                lv_label_set_text(batteryPercentLabel, "Charge: Charging...");
+                lv_obj_set_style_text_color(batteryPercentLabel, Theme::green(), 0);
+            }
+            else
+            {
+                // Only calculate percentage when not charging
+                float voltageFloat = voltage / 1000.0f;
 
-        // Simple Li-ion percentage estimation (3.0V = 0%, 4.2V = 100%)
-        int percentage = 0;
-        if (voltageFloat >= 4.2f)
-        {
-            percentage = 100;
-        }
-        else if (voltageFloat >= 3.0f)
-        {
-            percentage = (int)((voltageFloat - 3.0f) / 1.2f * 100.0f);
-        }
+                // Simple Li-ion percentage estimation (3.0V = 0%, 4.2V = 100%)
+                int percentage = 0;
+                if (voltageFloat >= 4.2f)
+                {
+                    percentage = 100;
+                }
+                else if (voltageFloat >= 3.0f)
+                {
+                    percentage = (int)((voltageFloat - 3.0f) / 1.2f * 100.0f);
+                }
 
-        lv_label_set_text_fmt(batteryPercentLabel, "Charge: %d%%", percentage);
+                lv_label_set_text_fmt(batteryPercentLabel, "Charge: %d%%", percentage);
 
-        // Color code based on percentage
-        if (percentage > 50)
-        {
-            lv_obj_set_style_text_color(batteryPercentLabel, Theme::green(), 0);
-        }
-        else if (percentage > 20)
-        {
-            lv_obj_set_style_text_color(batteryPercentLabel, Theme::yellow(), 0);
-        }
-        else
-        {
-            lv_obj_set_style_text_color(batteryPercentLabel, Theme::red(), 0);
-        }
+                // Color code based on percentage
+                if (percentage > 50)
+                {
+                    lv_obj_set_style_text_color(batteryPercentLabel, Theme::green(), 0);
+                }
+                else if (percentage > 20)
+                {
+                    lv_obj_set_style_text_color(batteryPercentLabel, Theme::yellow(), 0);
+                }
+                else
+                {
+                    lv_obj_set_style_text_color(batteryPercentLabel, Theme::red(), 0);
+                }
+            }
         }
         else
         {
             lv_label_set_text(batteryPercentLabel, "Charge: --");
             lv_obj_set_style_text_color(batteryPercentLabel, Theme::grey(), 0);
+        }
+    }
+
+    // Update charging current (when available)
+    if (batteryCurrentLabel)
+    {
+        bool usbConnected = amoled.isVbusIn();
+
+        if (usbConnected)
+        {
+            // Try to get charging current from available PMU chips
+            uint16_t chargingCurrent = 0;
+
+            // Check both chips but validate the readings
+            uint16_t syCurrentraw = amoled.SY.getChargeCurrent();
+            uint16_t bqCurrent = amoled.BQ.getChargeCurrent();
+
+            // BQ25896 appears to be the active charging chip on this board
+            // SY6970 returns invalid high values, so prefer BQ25896
+            if (bqCurrent > 0 && bqCurrent <= 1000)
+            {
+                chargingCurrent = bqCurrent;
+            }
+            else if (syCurrentraw > 0 && syCurrentraw <= 1000)
+            {
+                chargingCurrent = syCurrentraw;
+            }
+            else
+            {
+                chargingCurrent = 0; // Both invalid or zero
+            }
+
+            if (chargingCurrent > 0)
+            {
+                lv_label_set_text_fmt(batteryCurrentLabel, "Current: %d mA", chargingCurrent);
+                lv_obj_set_style_text_color(batteryCurrentLabel, Theme::green(), 0);
+            }
+            else
+            {
+                lv_label_set_text(batteryCurrentLabel, "Current: 0 mA (Full)");
+                lv_obj_set_style_text_color(batteryCurrentLabel, Theme::yellow(), 0);
+            }
+        }
+        else
+        {
+            lv_label_set_text(batteryCurrentLabel, "Current: Not Charging");
+            lv_obj_set_style_text_color(batteryCurrentLabel, Theme::grey(), 0);
         }
     }
 

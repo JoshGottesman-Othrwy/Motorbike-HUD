@@ -27,6 +27,7 @@ private:
     lv_obj_t *batteryVoltageLabel = nullptr;
     lv_obj_t *batteryStatusLabel = nullptr;
     lv_obj_t *batteryPercentLabel = nullptr;
+    lv_obj_t *batteryCurrentLabel = nullptr;
 
     // Debug UI Elements
     lv_obj_t *debugFrameCounter = nullptr;

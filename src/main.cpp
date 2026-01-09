@@ -64,8 +64,55 @@ void sensorTask(void *parameter)
     uint32_t nmeaCharCount = 0;
     uint32_t lastNmeaCount = 0;
 
+    // Low voltage monitoring variables
+    uint32_t lastVoltageCheck = 0;
+    uint32_t voltageCheckInterval = 30000; // Check every 30 seconds
+    bool lowVoltageWarning = false;
+
     for (;;)
     {
+        uint32_t now = millis();
+
+        // Check battery voltage periodically for early warning
+        if (now - lastVoltageCheck >= voltageCheckInterval)
+        {
+            uint16_t battVoltage = display.getAmoled().getBattVoltage();
+            bool isCharging = display.getAmoled().isVbusIn();
+
+            // Only check voltage when not charging (charging voltage is always 4.2V)
+            if (battVoltage > 0 && !isCharging)
+            {
+                float voltage = battVoltage / 1000.0f;
+
+                // Critical voltage - force shutdown (3.2V for Li-ion safety)
+                if (voltage < 3.2f)
+                {
+                    Serial.printf("CRITICAL: Battery voltage %.2fV - forcing shutdown!\n", voltage);
+                    display.getAmoled().shutdown();
+                }
+                // Warning voltage (3.4V)
+                else if (voltage < 3.4f && !lowVoltageWarning)
+                {
+                    Serial.printf("WARNING: Low battery voltage %.2fV - connect charger soon!\n", voltage);
+                    lowVoltageWarning = true;
+                }
+                // Clear warning when voltage recovers
+                else if (voltage >= 3.6f && lowVoltageWarning)
+                {
+                    Serial.printf("Battery voltage recovered: %.2fV\n", voltage);
+                    lowVoltageWarning = false;
+                }
+            }
+            // Reset warning when charging
+            else if (isCharging && lowVoltageWarning)
+            {
+                Serial.println("Battery charging - low voltage warning cleared");
+                lowVoltageWarning = false;
+            }
+
+            lastVoltageCheck = now;
+        }
+
         // Process GPS data (this also reads from Serial1)
         gps.loop();
 
@@ -123,7 +170,6 @@ void sensorTask(void *parameter)
         // }
 
         // Periodic status update with NMEA data monitoring
-        uint32_t now = millis();
         if (now - lastStatusPrint > statusUpdateInterval)
         {
             uint32_t nmeaThisPeriod = nmeaCharCount - lastNmeaCount;
@@ -193,6 +239,18 @@ void setup(void)
     }
 
     Serial.println("Display initialized successfully!");
+
+    // Enable battery charging (disabled by default)
+    Serial.print("Enabling battery charging... ");
+    display.getAmoled().enableCharge();
+    Serial.println("OK");
+
+    // Configure low voltage cutoff for battery protection
+    Serial.print("Configuring low voltage cutoff... ");
+    // Set low battery shutdown threshold to 10% (hardware protection)
+    display.getAmoled().setLowBatShutdownThreshold(10);
+    uint8_t threshold = display.getAmoled().getLowBatShutdownThreshold();
+    Serial.printf("OK (set to %d%%)\n", threshold);
 
     // Initialize GPS
     Serial.print("Initializing GPS... ");
