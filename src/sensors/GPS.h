@@ -51,6 +51,13 @@ private:
     static constexpr int TX_PIN = 43;
     static constexpr uint32_t GPS_BAUD = 9600;
 
+    // Common GPS baud rates to try
+    static constexpr uint32_t BAUD_RATES[] = {115200, 57600, 38400, 9600, 4800};
+    static constexpr size_t NUM_BAUD_RATES = sizeof(BAUD_RATES) / sizeof(BAUD_RATES[0]);
+    size_t currentBaudIndex = 0;
+    uint32_t baudTestStartTime = 0;
+    static constexpr uint32_t BAUD_TEST_DURATION = 5000; // Test each baud for 5 seconds
+
     // GPS objects
     TinyGPSPlus gps;
     HardwareSerial &gpsSerial;
@@ -61,8 +68,13 @@ private:
     uint32_t lastDataTime = 0;
     static constexpr uint32_t DATA_TIMEOUT_MS = 3000; // Consider disconnected after 3s of no data
 
+    // NMEA sentence debugging
+    uint32_t lastDebugPrint = 0;
+    static constexpr uint32_t DEBUG_INTERVAL_MS = 10000; // Print NMEA stats every 10s
+
     // Internal methods
     void processIncomingData();
+    void configureConstellations();
     GPSStatus calculateStatus(float hdop);
 
 public:
@@ -141,6 +153,13 @@ public:
      * @return true if location data is valid
      */
     bool hasFix();
+
+    /**
+     * Get the total number of NMEA characters processed.
+     * Useful for debugging to confirm data is being received.
+     * @return Total character count from TinyGPS++
+     */
+    uint32_t getCharsProcessed() const { return gps.charsProcessed(); }
 
     /**
      * Get reference to the underlying TinyGPS++ object.

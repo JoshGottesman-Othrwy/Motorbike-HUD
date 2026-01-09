@@ -61,9 +61,17 @@ void SpeedPage::create()
 
 void SpeedPage::update()
 {
+    // Only update when page is active for efficiency
+    if (!isPageActive)
+    {
+        return;
+    }
+
     // Update GPS displays using change detection for efficiency
     updateSatelliteDisplay();
     updateGPSStatusDisplay();
+    updateClockDisplay();
+    updateSpeedDisplay();
 }
 
 // ============================================================================
@@ -179,5 +187,112 @@ const char *SpeedPage::getStatusText(GPSStatus status)
 
     default:
         return "(Unknown)";
+    }
+}
+
+// ============================================================================
+// CLOCK DISPLAY UPDATE
+// Shows GPS time when available, "--:--" when no GPS time
+// Only updates when time changes for efficiency
+// ============================================================================
+void SpeedPage::updateClockDisplay()
+{
+    GPSTime currentTime = gps.getTime();
+    bool timeIsValid = currentTime.valid && gps.isConnected();
+
+    // Check if we need to update
+    bool timeChanged = (currentTime.hour != cachedHour || currentTime.minute != cachedMinute);
+    bool timeValidityChanged = (timeIsValid != cachedTimeWasValid);
+
+    if (!timeChanged && !timeValidityChanged && !firstUpdate)
+    {
+        return; // No change, skip update for efficiency
+    }
+
+    // Update cache
+    cachedHour = currentTime.hour;
+    cachedMinute = currentTime.minute;
+    cachedTimeWasValid = timeIsValid;
+
+    // Format and display time
+    char timeBuffer[8];
+    if (timeIsValid)
+    {
+        // Format as HH:MM (24-hour format)
+        snprintf(timeBuffer, sizeof(timeBuffer), "%02d:%02d", currentTime.hour, currentTime.minute);
+    }
+    else
+    {
+        // No valid GPS time
+        snprintf(timeBuffer, sizeof(timeBuffer), "--:--");
+    }
+
+    lv_label_set_text(clockDisplay, timeBuffer);
+}
+
+// ============================================================================
+// SPEED DISPLAY UPDATE
+// Shows GPS speed when available, "--" when no GPS fix
+// Rounds to nearest whole number, clamps values under 0.8 to zero
+// Only updates when speed changes for efficiency
+// ============================================================================
+void SpeedPage::updateSpeedDisplay()
+{
+    // Get raw speed from GPS
+    float rawSpeed = gps.getSpeedMph();
+
+    // Apply clamping and rounding logic to get target speed
+    int32_t newTargetSpeed;
+    if (!gps.hasFix() || !gps.isConnected())
+    {
+        newTargetSpeed = -1; // Use -1 to indicate no data (will show "--")
+    }
+    else if (rawSpeed < 0.8f)
+    {
+        newTargetSpeed = 0; // Clamp low speeds to zero
+    }
+    else
+    {
+        newTargetSpeed = static_cast<int32_t>(rawSpeed + 0.5f); // Round to nearest whole number
+    }
+
+    // Update target if it has changed
+    if (newTargetSpeed != targetSpeed)
+    {
+        targetSpeed = newTargetSpeed;
+
+        // If no GPS data, update display immediately
+        if (targetSpeed == -1)
+        {
+            displayedSpeed = -1;
+            lv_label_set_text(mainSpeed, "--");
+            return;
+        }
+
+        // If first update or large jump (more than 10 mph), set immediately
+        if (firstUpdate || abs(targetSpeed - displayedSpeed) > 10)
+        {
+            displayedSpeed = targetSpeed;
+            lv_label_set_text_fmt(mainSpeed, "%ld", displayedSpeed);
+            return;
+        }
+    }
+
+    // Smooth animation: increment displayed speed towards target
+    uint32_t now = millis();
+    if (displayedSpeed != targetSpeed && now - lastSpeedUpdate >= SPEED_INCREMENT_INTERVAL_MS)
+    {
+        if (displayedSpeed < targetSpeed)
+        {
+            displayedSpeed++;
+        }
+        else if (displayedSpeed > targetSpeed)
+        {
+            displayedSpeed--;
+        }
+
+        // Update display
+        lv_label_set_text_fmt(mainSpeed, "%ld", displayedSpeed);
+        lastSpeedUpdate = now;
     }
 }

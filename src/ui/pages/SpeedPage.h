@@ -30,11 +30,24 @@ private:
     // Cached state for change detection (only update display when values change)
     int32_t cachedSatelliteCount = -1;
     GPSStatus cachedGPSStatus = GPSStatus::NotConnected;
-    bool firstUpdate = true; // Force update on first run to sync display with actual state
+    uint8_t cachedHour = 255;        // Invalid initial value to force first update
+    uint8_t cachedMinute = 255;      // Invalid initial value to force first update
+    bool cachedTimeWasValid = false; // Track when GPS time becomes valid
+    int32_t cachedSpeed = -1;        // Cached speed for change detection
+    bool firstUpdate = true;         // Force update on first run to sync display with actual state
+    bool isPageActive = false;       // Track if this page is currently visible
+
+    // Speed animation state
+    int32_t targetSpeed = 0;                                     // Target speed we're animating towards
+    int32_t displayedSpeed = 0;                                  // Currently displayed speed
+    uint32_t lastSpeedUpdate = 0;                                // Last time speed display was incremented
+    static constexpr uint32_t SPEED_INCREMENT_INTERVAL_MS = 100; // Tunable: animation speed
 
     // Helper methods for clean, readable code
     void updateSatelliteDisplay();
     void updateGPSStatusDisplay();
+    void updateClockDisplay();
+    void updateSpeedDisplay();
     lv_color_t getStatusColor(GPSStatus status);
     const char *getStatusText(GPSStatus status);
 
@@ -43,4 +56,6 @@ public:
 
     void create() override;
     void update() override;
+    void onEnter() override { isPageActive = true; }
+    void onExit() override { isPageActive = false; }
 };

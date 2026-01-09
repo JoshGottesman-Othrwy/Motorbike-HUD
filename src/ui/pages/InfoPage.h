@@ -1,6 +1,10 @@
 #pragma once
 #include "../Page.h"
 #include "../Theme.h"
+#include "../../sensors/GPS.h"
+
+// External sensor instances from main.cpp
+extern GPS gps;
 
 /**
  * Info page showing system status.

@@ -119,6 +119,48 @@ void InfoPage::update()
         lastFPSUpdate = now;
     }
 
+    // Update GPS module status
+    if (moduleGPSLabel)
+    {
+        if (gps.isConnected())
+        {
+            GPSStatus status = gps.getStatus();
+            if (status == GPSStatus::NoFix)
+            {
+                lv_label_set_text(moduleGPSLabel, "GPS: Connected (No Fix)");
+                lv_obj_set_style_text_color(moduleGPSLabel, Theme::yellow(), 0);
+            }
+            else
+            {
+                // Has fix - show satellite count
+                lv_label_set_text_fmt(moduleGPSLabel, "GPS: %ld sats (%s)",
+                                      gps.getSatelliteCount(), gps.getStatusString());
+                lv_obj_set_style_text_color(moduleGPSLabel, Theme::green(), 0);
+            }
+        }
+        else
+        {
+            lv_label_set_text(moduleGPSLabel, "GPS: Not detected");
+            lv_obj_set_style_text_color(moduleGPSLabel, Theme::red(), 0);
+        }
+    }
+
+    // Update Magnetometer status (not yet implemented)
+    if (moduleMagnetometerLabel)
+    {
+        // TODO: Update when magnetometer sensor is added
+        lv_label_set_text(moduleMagnetometerLabel, "Magnetometer: N/A");
+        lv_obj_set_style_text_color(moduleMagnetometerLabel, Theme::grey(), 0);
+    }
+
+    // Update IMU status (not yet implemented)
+    if (moduleIMULabel)
+    {
+        // TODO: Update when IMU sensor is added
+        lv_label_set_text(moduleIMULabel, "IMU: N/A");
+        lv_obj_set_style_text_color(moduleIMULabel, Theme::grey(), 0);
+    }
+
     // Update frame counter display
     if (debugFrameCounter)
     {

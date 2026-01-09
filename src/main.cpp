@@ -23,16 +23,28 @@ void displayTask(void *parameter)
 {
     Serial.println("[Core 1] Display task started");
 
+    const TickType_t targetInterval = pdMS_TO_TICKS(5); // 5ms target interval
+    TickType_t lastWakeTime = xTaskGetTickCount();
+
     for (;;)
     {
+        TickType_t startTime = xTaskGetTickCount();
+
         // Call LVGL task handler for UI responsiveness
         lv_task_handler();
 
         // Update the current page (for any dynamic content)
         display.update();
 
-        // Small delay - LVGL recommends 5-10ms between calls
-        vTaskDelay(pdMS_TO_TICKS(5));
+        // Calculate elapsed time and delay only if needed
+        TickType_t elapsedTime = xTaskGetTickCount() - startTime;
+
+        if (elapsedTime < targetInterval)
+        {
+            // Only delay for remaining time if we finished early
+            vTaskDelay(targetInterval - elapsedTime);
+        }
+        // If processing took >= 5ms, continue immediately (no extra delay)
     }
 }
 
@@ -44,10 +56,111 @@ void sensorTask(void *parameter)
 {
     Serial.println("[Core 0] Sensor task started");
 
+    // GPS status monitoring variables
+    GPSStatus lastGPSStatus = GPSStatus::NotConnected;
+    uint32_t lastSatCount = 0;
+    uint32_t statusUpdateInterval = 5000; // Print status every 5 seconds
+    uint32_t lastStatusPrint = 0;
+    uint32_t nmeaCharCount = 0;
+    uint32_t lastNmeaCount = 0;
+
     for (;;)
     {
-        // Process GPS data
+        // Process GPS data (this also reads from Serial1)
         gps.loop();
+
+        // Get NMEA character count from GPS class for debugging
+        nmeaCharCount = gps.getCharsProcessed();
+
+        // Monitor GPS status changes
+        GPSStatus currentStatus = gps.getStatus();
+        uint32_t currentSats = gps.getSatelliteCount();
+
+        // Print status when it changes (fixed the duplicate string issue)
+        if (currentStatus != lastGPSStatus)
+        {
+            const char *oldStatusStr = "";
+            switch (lastGPSStatus)
+            {
+            case GPSStatus::NotConnected:
+                oldStatusStr = "NC";
+                break;
+            case GPSStatus::NoFix:
+                oldStatusStr = "No Fix";
+                break;
+            case GPSStatus::Poor:
+                oldStatusStr = "Poor";
+                break;
+            case GPSStatus::Fair:
+                oldStatusStr = "Fair";
+                break;
+            case GPSStatus::Good:
+                oldStatusStr = "Good";
+                break;
+            case GPSStatus::Excellent:
+                oldStatusStr = "Excellent";
+                break;
+            }
+
+            Serial.printf("[GPS] Status changed: %s -> %s\n",
+                          oldStatusStr, gps.getStatusString());
+
+            // Print helpful message when status changes
+            if (currentStatus == GPSStatus::NoFix && gps.isConnected())
+            {
+                Serial.println("[GPS] Module connected but no satellite fix (normal indoors)");
+            }
+
+            lastGPSStatus = currentStatus;
+        }
+
+        // // Print satellite count when it changes
+        // if (currentSats != lastSatCount)
+        // {
+        //     Serial.printf("[GPS] Satellites: %ld (HDOP: %.2f)\n",
+        //                   currentSats, gps.getHDOP());
+        //                   lastSatCount = currentSats;
+        // }
+
+        // Periodic status update with NMEA data monitoring
+        uint32_t now = millis();
+        if (now - lastStatusPrint > statusUpdateInterval)
+        {
+            uint32_t nmeaThisPeriod = nmeaCharCount - lastNmeaCount;
+
+            // Serial.printf("[GPS] Status: %s | Sats: %ld | HDOP: %.2f | Connected: %s | NMEA chars/5s: %ld\n",
+            //               gps.getStatusString(),
+            //               gps.getSatelliteCount(),
+            //               gps.getHDOP(),
+            //               gps.isConnected() ? "Yes" : "No",
+            //               nmeaThisPeriod);
+
+            // Comprehensive GPS status update
+            GPSLocation loc = gps.getLocation();
+            GPSTime time = gps.getTime();
+
+            Serial.printf("[GPS] Sats: %ld | HDOP: %.2f (%s)",
+                          gps.getSatelliteCount(), gps.getHDOP(), gps.getStatusString());
+
+            // Add location and speed if we have a fix
+            if (gps.hasFix())
+            {
+                Serial.printf(" | Loc: %.6f, %.6f | Speed: %.1f mph",
+                              loc.latitude, loc.longitude, gps.getSpeedMph());
+            }
+
+            // Add time if valid
+            if (time.valid)
+            {
+                Serial.printf(" | Time: %02d:%02d:%02d UTC",
+                              time.hour, time.minute, time.second);
+            }
+
+            Serial.println(); // End line
+
+            lastStatusPrint = now;
+            lastNmeaCount = nmeaCharCount;
+        }
 
         // Add other sensor polling here as needed
         // Example: accelerometer.loop(), temperature.loop(), etc.

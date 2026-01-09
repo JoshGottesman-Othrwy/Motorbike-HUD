@@ -56,6 +56,69 @@ void StatsPage::create()
 
 void StatsPage::update()
 {
-    // TODO: Add dynamic update logic here
-    // This will be called periodically when this page is visible
+    // Only update when page is active for efficiency
+    if (!isPageActive)
+    {
+        return;
+    }
+
+    updateSpeedDisplay();
+    updateSatelliteDisplay();
+}
+
+// ============================================================================
+// SPEED DISPLAY UPDATE (to 0.1 mph precision)
+// ============================================================================
+void StatsPage::updateSpeedDisplay()
+{
+    float currentSpeed = gps.getSpeedMph();
+
+    // Round to nearest 0.1 mph
+    float roundedSpeed = roundf(currentSpeed * 10.0f) / 10.0f;
+
+    // Skip update if speed hasn't changed (efficiency)
+    if (fabs(roundedSpeed - cachedSpeed) < 0.01f)
+    {
+        return;
+    }
+
+    // Update cache
+    cachedSpeed = roundedSpeed;
+
+    // Update display
+    if (gps.hasFix() && gps.isConnected())
+    {
+        lv_label_set_text_fmt(speedLabel, "%.1f", roundedSpeed);
+    }
+    else
+    {
+        lv_label_set_text(speedLabel, "--.-");
+    }
+}
+
+// ============================================================================
+// SATELLITE DISPLAY UPDATE
+// ============================================================================
+void StatsPage::updateSatelliteDisplay()
+{
+    int32_t currentSats = gps.getSatelliteCount();
+
+    // Skip update if value hasn't changed
+    if (currentSats == cachedSatellites)
+    {
+        return;
+    }
+
+    // Update cache
+    cachedSatellites = currentSats;
+
+    // Update display
+    if (gps.isConnected())
+    {
+        lv_label_set_text_fmt(satsLabel, "Sats. %ld", currentSats);
+    }
+    else
+    {
+        lv_label_set_text(satsLabel, "Sats. -");
+    }
 }
