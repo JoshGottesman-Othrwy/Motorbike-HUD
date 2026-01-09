@@ -1,6 +1,12 @@
 #include <Arduino.h>
 #include "display.h"
 #include "sensors/GPS.h"
+#include "driver/gpio.h"
+#include "driver/rtc_io.h"
+
+// Deep sleep configuration
+#define BOOT_BUTTON_PIN 0
+#define BUTTON_SLEEP_DURATION_MS 2000 // Hold button for 2 seconds to sleep
 
 // Create display instance
 Display display;
@@ -14,6 +20,15 @@ TaskHandle_t sensorTaskHandle = NULL;
 
 // Mutex for protecting shared data between cores
 SemaphoreHandle_t dataMutex = NULL;
+
+// Button and sleep variables
+bool buttonPressed = false;
+uint32_t buttonPressStart = 0;
+bool goingToSleep = false;
+
+// Function prototypes
+void enterDeepSleep();
+void checkWakeupReason();
 
 // ============================================================================
 // DISPLAY TASK - Runs on Core 1 (main core)
@@ -69,9 +84,46 @@ void sensorTask(void *parameter)
     uint32_t voltageCheckInterval = 30000; // Check every 30 seconds
     bool lowVoltageWarning = false;
 
+    // Button monitoring variables
+    uint32_t lastButtonCheck = 0;
+    uint32_t buttonCheckInterval = 50; // Check every 50ms
+
     for (;;)
     {
         uint32_t now = millis();
+
+        // Check boot button for deep sleep (every 50ms)
+        if (now - lastButtonCheck >= buttonCheckInterval)
+        {
+            bool currentButtonState = digitalRead(BOOT_BUTTON_PIN) == LOW; // Active low
+
+            if (currentButtonState && !buttonPressed)
+            {
+                // Button just pressed
+                buttonPressed = true;
+                buttonPressStart = now;
+                Serial.println("Boot button pressed - hold for 2 seconds to sleep");
+            }
+            else if (!currentButtonState && buttonPressed)
+            {
+                // Button released
+                buttonPressed = false;
+                Serial.println("Boot button released");
+            }
+            else if (currentButtonState && buttonPressed)
+            {
+                // Button still being held
+                if (now - buttonPressStart >= BUTTON_SLEEP_DURATION_MS)
+                {
+                    Serial.println("Entering deep sleep mode...");
+                    goingToSleep = true;
+                    enterDeepSleep();
+                    // This function won't return
+                }
+            }
+
+            lastButtonCheck = now;
+        }
 
         // Check battery voltage periodically for early warning
         if (now - lastVoltageCheck >= voltageCheckInterval)
@@ -216,12 +268,75 @@ void sensorTask(void *parameter)
     }
 }
 
+// ============================================================================
+// DEEP SLEEP FUNCTIONS
+// ============================================================================
+void enterDeepSleep()
+{
+    // Save any important state if needed
+    Serial.println("Preparing for deep sleep...");
+
+    // Put display to sleep
+    display.getAmoled().sleep(true); // Enable touchpad sleep as well
+
+    // Configure GPIO0 as RTC GPIO for wake-up
+    // This is more reliable for deep sleep wake-up
+    rtc_gpio_init((gpio_num_t)BOOT_BUTTON_PIN);
+    rtc_gpio_set_direction((gpio_num_t)BOOT_BUTTON_PIN, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_en((gpio_num_t)BOOT_BUTTON_PIN);
+    rtc_gpio_pulldown_dis((gpio_num_t)BOOT_BUTTON_PIN);
+
+    // Configure wake-up source - wake on LOW (button press)
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)BOOT_BUTTON_PIN, 0);
+
+    Serial.println("Entering deep sleep. Press and hold boot button to wake.");
+    Serial.flush(); // Make sure message is sent
+    delay(100);     // Give time for serial to complete
+
+    // Enter deep sleep
+    esp_deep_sleep_start();
+}
+
+void checkWakeupReason()
+{
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+
+    switch (wakeup_reason)
+    {
+    case ESP_SLEEP_WAKEUP_EXT0:
+        Serial.println("Woke up from deep sleep (boot button pressed)");
+        break;
+    case ESP_SLEEP_WAKEUP_EXT1:
+        Serial.println("Woke up from deep sleep (other GPIO)");
+        break;
+    case ESP_SLEEP_WAKEUP_TIMER:
+        Serial.println("Woke up from deep sleep (timer)");
+        break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD:
+        Serial.println("Woke up from deep sleep (touchpad)");
+        break;
+    case ESP_SLEEP_WAKEUP_ULP:
+        Serial.println("Woke up from deep sleep (ULP program)");
+        break;
+    default:
+        Serial.println("Normal startup (not from deep sleep)");
+        break;
+    }
+}
+
 void setup(void)
 {
     delay(50);
     Serial.begin(115200);
     Serial.println("=======MOTO DISPLAY=======");
     Serial.printf("ESP32-S3 running at %d MHz\n", getCpuFrequencyMhz());
+
+    // Check wake-up reason
+    checkWakeupReason();
+
+    // Setup boot button for deep sleep
+    pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+    Serial.printf("Boot button (GPIO%d) configured for deep sleep control\n", BOOT_BUTTON_PIN);
 
     // Create mutex for thread-safe data access
     dataMutex = xSemaphoreCreateMutex();
@@ -288,6 +403,7 @@ void setup(void)
     Serial.println("  - Core 1: Display/LVGL (priority 2)");
     Serial.println("  - Core 0: Sensors/GPS (priority 1)");
     Serial.println("System ready - swipe to navigate between pages");
+    Serial.println("Hold boot button for 2 seconds to enter deep sleep");
 }
 
 void loop()
