@@ -2,9 +2,11 @@
 #include "../Page.h"
 #include "../Theme.h"
 #include "../../sensors/GPS.h"
+#include "../../display.h"
 
 // External sensor instances from main.cpp
 extern GPS gps;
+extern Display display;
 
 /**
  * Info page showing system status.
@@ -20,6 +22,11 @@ private:
     lv_obj_t *moduleGPSLabel = nullptr;
     lv_obj_t *moduleIMULabel = nullptr;
     lv_obj_t *moduleMagnetometerLabel = nullptr;
+
+    // Battery UI Elements
+    lv_obj_t *batteryVoltageLabel = nullptr;
+    lv_obj_t *batteryStatusLabel = nullptr;
+    lv_obj_t *batteryPercentLabel = nullptr;
 
     // Debug UI Elements
     lv_obj_t *debugFrameCounter = nullptr;

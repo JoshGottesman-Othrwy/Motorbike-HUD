@@ -75,33 +75,61 @@ void InfoPage::create()
     lv_label_set_text(moduleIMULabel, "IMU: Not detected");
     lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 300);
 
-    // Debug section header
+    // Battery Status section header
+    lv_obj_t *batteryHeader = lv_label_create(tile);
+    lv_obj_set_style_text_font(batteryHeader, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(batteryHeader, Theme::grey(), 0);
+    lv_label_set_text(batteryHeader, "Battery Status:");
+    lv_obj_align(batteryHeader, LV_ALIGN_TOP_LEFT, 10, 340);
+
+    // Battery voltage
+    batteryVoltageLabel = lv_label_create(tile);
+    lv_obj_set_style_text_font(batteryVoltageLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(batteryVoltageLabel, Theme::white(), 0);
+    lv_label_set_text(batteryVoltageLabel, "Voltage: --.-V");
+    lv_obj_align(batteryVoltageLabel, LV_ALIGN_TOP_LEFT, 10, 380);
+
+    // Battery status (charging/discharging)
+    batteryStatusLabel = lv_label_create(tile);
+    lv_obj_set_style_text_font(batteryStatusLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(batteryStatusLabel, Theme::white(), 0);
+    lv_label_set_text(batteryStatusLabel, "Status: Unknown");
+    lv_obj_align(batteryStatusLabel, LV_ALIGN_TOP_LEFT, 10, 410);
+
+    // Battery percentage estimate
+    batteryPercentLabel = lv_label_create(tile);
+    lv_obj_set_style_text_font(batteryPercentLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(batteryPercentLabel, Theme::white(), 0);
+    lv_label_set_text(batteryPercentLabel, "Charge: --%");
+    lv_obj_align(batteryPercentLabel, LV_ALIGN_TOP_LEFT, 10, 440);
+
+    // Debug section header (moved down)
     lv_obj_t *debugHeader = lv_label_create(tile);
     lv_obj_set_style_text_font(debugHeader, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(debugHeader, Theme::yellow(), 0);
     lv_label_set_text(debugHeader, "Debug:");
-    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 360);
+    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 500);
 
-    // Frame counter
+    // Frame counter (moved down)
     debugFrameCounter = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFrameCounter, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFrameCounter, Theme::grey(), 0);
     lv_label_set_text(debugFrameCounter, "Frames: 0");
-    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 400);
+    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 540);
 
-    // FPS display
+    // FPS display (moved down)
     debugFPS = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFPS, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFPS, Theme::grey(), 0);
     lv_label_set_text(debugFPS, "FPS: 0.0");
-    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 430);
+    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 570);
 
-    // Uptime display
+    // Uptime display (moved down)
     debugUptime = lv_label_create(tile);
     lv_obj_set_style_text_font(debugUptime, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugUptime, Theme::grey(), 0);
     lv_label_set_text(debugUptime, "Uptime: 0s");
-    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 460);
+    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 600);
 }
 
 void InfoPage::update()
@@ -159,6 +187,88 @@ void InfoPage::update()
         // TODO: Update when IMU sensor is added
         lv_label_set_text(moduleIMULabel, "IMU: N/A");
         lv_obj_set_style_text_color(moduleIMULabel, Theme::grey(), 0);
+    }
+
+    // Update battery status
+    LilyGo_AMOLED &amoled = display.getAmoled();
+
+    // Battery voltage
+    if (batteryVoltageLabel)
+    {
+        uint16_t voltage = amoled.getBattVoltage();
+        if (voltage > 0)
+        {
+            lv_label_set_text_fmt(batteryVoltageLabel, "Voltage: %.2fV", voltage / 1000.0f);
+        }
+        else
+        {
+            lv_label_set_text(batteryVoltageLabel, "Voltage: No Battery");
+        }
+    }
+
+    // Charging status
+    if (batteryStatusLabel)
+    {
+        uint16_t battVoltage = amoled.getBattVoltage();
+        bool usbConnected = amoled.isVbusIn();
+        
+        if (battVoltage == 0)
+        {
+            lv_label_set_text(batteryStatusLabel, "Status: No Battery");
+            lv_obj_set_style_text_color(batteryStatusLabel, Theme::red(), 0);
+        }
+        else if (usbConnected)
+        {
+            lv_label_set_text(batteryStatusLabel, "Status: Charging");
+            lv_obj_set_style_text_color(batteryStatusLabel, Theme::green(), 0);
+        }
+        else
+        {
+            lv_label_set_text(batteryStatusLabel, "Status: Discharging");
+            lv_obj_set_style_text_color(batteryStatusLabel, Theme::yellow(), 0);
+        }
+    }
+
+    // Battery percentage estimate (rough Li-ion estimation)
+    if (batteryPercentLabel)
+    {
+        uint16_t voltage = amoled.getBattVoltage();
+        if (voltage > 0)
+        {
+        float voltageFloat = voltage / 1000.0f;
+
+        // Simple Li-ion percentage estimation (3.0V = 0%, 4.2V = 100%)
+        int percentage = 0;
+        if (voltageFloat >= 4.2f)
+        {
+            percentage = 100;
+        }
+        else if (voltageFloat >= 3.0f)
+        {
+            percentage = (int)((voltageFloat - 3.0f) / 1.2f * 100.0f);
+        }
+
+        lv_label_set_text_fmt(batteryPercentLabel, "Charge: %d%%", percentage);
+
+        // Color code based on percentage
+        if (percentage > 50)
+        {
+            lv_obj_set_style_text_color(batteryPercentLabel, Theme::green(), 0);
+        }
+        else if (percentage > 20)
+        {
+            lv_obj_set_style_text_color(batteryPercentLabel, Theme::yellow(), 0);
+        }
+        else
+        {
+            lv_obj_set_style_text_color(batteryPercentLabel, Theme::red(), 0);
+        }
+        }
+        else
+        {
+            lv_label_set_text(batteryPercentLabel, "Charge: --");
+            lv_obj_set_style_text_color(batteryPercentLabel, Theme::grey(), 0);
+        }
     }
 
     // Update frame counter display
