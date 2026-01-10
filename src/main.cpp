@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include "display.h"
 #include "sensors/GPS.h"
-#include "driver/gpio.h"
-#include "driver/rtc_io.h"
 
 // Deep sleep configuration
 #define BOOT_BUTTON_PIN 0
+#define CAPACITIVE_BUTTON_PIN 15
 #define BUTTON_SLEEP_DURATION_MS 2000 // Hold button for 2 seconds to sleep
+
+// GPIO Scanner for finding capacitive button
+// GPIOScanner gpioScanner; // Removed - found GPIO21
 
 // Create display instance
 Display display;
@@ -25,6 +27,11 @@ SemaphoreHandle_t dataMutex = NULL;
 bool buttonPressed = false;
 uint32_t buttonPressStart = 0;
 bool goingToSleep = false;
+
+// Capacitive button variables
+bool capButtonPressed = false;
+uint32_t capButtonPressStart = 0;
+bool lastCapButtonState = true; // Pull-up, so HIGH when not pressed
 
 // Function prototypes
 void enterDeepSleep();
@@ -84,45 +91,44 @@ void sensorTask(void *parameter)
     uint32_t voltageCheckInterval = 30000; // Check every 30 seconds
     bool lowVoltageWarning = false;
 
-    // Button monitoring variables
-    uint32_t lastButtonCheck = 0;
-    uint32_t buttonCheckInterval = 50; // Check every 50ms
+    // Capacitive button monitoring variables
+    uint32_t lastCapButtonCheck = 0;
+    uint32_t capButtonCheckInterval = 50; // Check every 50ms
+
+    // Raw GPIO monitoring variables
+    uint32_t lastGpioOutput = 0;
+    uint32_t gpioOutputInterval = 5000; // Show GPIO state every 5 seconds (same as GPS)
 
     for (;;)
     {
         uint32_t now = millis();
 
-        // Check boot button for deep sleep (every 50ms)
-        if (now - lastButtonCheck >= buttonCheckInterval)
+        // Monitor GPIO15 level for sleep trigger
+        if (now - lastCapButtonCheck >= capButtonCheckInterval)
         {
-            bool currentButtonState = digitalRead(BOOT_BUTTON_PIN) == LOW; // Active low
+            bool currentCapButtonState = digitalRead(CAPACITIVE_BUTTON_PIN);
 
-            if (currentButtonState && !buttonPressed)
+            // Sleep when GPIO15 is LOW
+            if (currentCapButtonState == LOW)
             {
-                // Button just pressed
-                buttonPressed = true;
-                buttonPressStart = now;
-                Serial.println("Boot button pressed - hold for 2 seconds to sleep");
-            }
-            else if (!currentButtonState && buttonPressed)
-            {
-                // Button released
-                buttonPressed = false;
-                Serial.println("Boot button released");
-            }
-            else if (currentButtonState && buttonPressed)
-            {
-                // Button still being held
-                if (now - buttonPressStart >= BUTTON_SLEEP_DURATION_MS)
-                {
-                    Serial.println("Entering deep sleep mode...");
-                    goingToSleep = true;
-                    enterDeepSleep();
-                    // This function won't return
-                }
+                Serial.println("[SLEEP] GPIO15 is LOW - entering deep sleep...");
+                goingToSleep = true;
+                enterDeepSleep();
+                // This function won't return
             }
 
-            lastButtonCheck = now;
+            // Update for monitoring display
+            lastCapButtonState = currentCapButtonState;
+            lastCapButtonCheck = now;
+        }
+
+        // Regular GPIO15 level monitoring
+        if (now - lastGpioOutput >= gpioOutputInterval)
+        {
+            int digitalState = digitalRead(CAPACITIVE_BUTTON_PIN);
+
+            Serial.printf("[GPIO15] %s\n", digitalState ? "HIGH" : "LOW");
+            lastGpioOutput = now;
         }
 
         // Check battery voltage periodically for early warning
@@ -279,19 +285,11 @@ void enterDeepSleep()
     // Put display to sleep
     display.getAmoled().sleep(true); // Enable touchpad sleep as well
 
-    // Configure GPIO0 as RTC GPIO for wake-up
-    // This is more reliable for deep sleep wake-up
-    rtc_gpio_init((gpio_num_t)BOOT_BUTTON_PIN);
-    rtc_gpio_set_direction((gpio_num_t)BOOT_BUTTON_PIN, RTC_GPIO_MODE_INPUT_ONLY);
-    rtc_gpio_pullup_en((gpio_num_t)BOOT_BUTTON_PIN);
-    rtc_gpio_pulldown_dis((gpio_num_t)BOOT_BUTTON_PIN);
+    // Configure wake-up source (GPIO15 HIGH to wake)
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)CAPACITIVE_BUTTON_PIN, 1); // Wake on HIGH
 
-    // Configure wake-up source - wake on LOW (button press)
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)BOOT_BUTTON_PIN, 0);
-
-    Serial.println("Entering deep sleep. Press and hold boot button to wake.");
+    Serial.println("Entering deep sleep. Set GPIO15 HIGH to wake.");
     Serial.flush(); // Make sure message is sent
-    delay(100);     // Give time for serial to complete
 
     // Enter deep sleep
     esp_deep_sleep_start();
@@ -304,7 +302,7 @@ void checkWakeupReason()
     switch (wakeup_reason)
     {
     case ESP_SLEEP_WAKEUP_EXT0:
-        Serial.println("Woke up from deep sleep (boot button pressed)");
+        Serial.println("Woke up from deep sleep (GPIO15 went HIGH)");
         break;
     case ESP_SLEEP_WAKEUP_EXT1:
         Serial.println("Woke up from deep sleep (other GPIO)");
@@ -334,13 +332,9 @@ void setup(void)
     // Check wake-up reason
     checkWakeupReason();
 
-    // Setup boot button for deep sleep
-    pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
-    Serial.printf("Boot button (GPIO%d) configured for deep sleep control\n", BOOT_BUTTON_PIN);
-
-    // Create mutex for thread-safe data access
-    dataMutex = xSemaphoreCreateMutex();
-
+    // Setup GPIO15 for level-based sleep/wake control (pull-down for reliable HIGH wake)
+    pinMode(CAPACITIVE_BUTTON_PIN, INPUT_PULLDOWN);
+    Serial.printf("GPIO15 configured for level-based sleep/wake control (pull-down)\\n");
     // Initialize display (this also initializes all pages)
     // Must be done on Core 1 where LVGL will run
     bool displayOk = display.begin();
@@ -403,7 +397,7 @@ void setup(void)
     Serial.println("  - Core 1: Display/LVGL (priority 2)");
     Serial.println("  - Core 0: Sensors/GPS (priority 1)");
     Serial.println("System ready - swipe to navigate between pages");
-    Serial.println("Hold boot button for 2 seconds to enter deep sleep");
+    Serial.println("GPIO15 LOW = sleep | GPIO15 HIGH = wake");
 }
 
 void loop()
