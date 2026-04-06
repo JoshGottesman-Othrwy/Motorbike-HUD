@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "display.h"
 #include "sensors/GPS.h"
+#include "wifi/WiFiOTA.h"
 
 // Deep sleep configuration
 #define BOOT_BUTTON_PIN 0
@@ -15,6 +16,9 @@ Display display;
 
 // Create GPS instance
 GPS gps;
+
+// Create WiFiOTA instance
+WiFiOTA wifiOTA;
 
 // Task handles
 TaskHandle_t displayTaskHandle = NULL;
@@ -266,8 +270,8 @@ void sensorTask(void *parameter)
             lastNmeaCount = nmeaCharCount;
         }
 
-        // Add other sensor polling here as needed
-        // Example: accelerometer.loop(), temperature.loop(), etc.
+        // Handle WiFi OTA updates
+        wifiOTA.handle();
 
         // Sensor polling rate - adjust as needed
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -361,6 +365,11 @@ void setup(void)
     uint8_t threshold = display.getAmoled().getLowBatShutdownThreshold();
     Serial.printf("OK (set to %d%%)\n", threshold);
 
+    // Initialize WiFi and OTA
+    Serial.print("Initializing WiFi... ");
+    bool wifiOk = wifiOTA.begin();
+    Serial.println(wifiOk ? "Connected" : "Not available");
+
     // Initialize GPS
     Serial.print("Initializing GPS... ");
     bool gpsOk = gps.begin();
@@ -386,7 +395,7 @@ void setup(void)
     xTaskCreatePinnedToCore(
         sensorTask,        // Task function
         "SensorTask",      // Task name
-        4096,              // Stack size (bytes)
+        8192,              // Stack size (bytes)
         NULL,              // Parameters
         1,                 // Priority
         &sensorTaskHandle, // Task handle

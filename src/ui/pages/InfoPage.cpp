@@ -1,6 +1,11 @@
 #include "InfoPage.h"
 #include <Arduino.h>
 
+void InfoPage::onRefreshBtnClicked(lv_event_t *e)
+{
+    wifiOTA.requestRescan();
+}
+
 void InfoPage::create()
 {
     // Make info page scrollable
@@ -47,94 +52,116 @@ void InfoPage::create()
     lv_label_set_text(wifiIPLabel, "IP: 0.0.0.0");
     lv_obj_align(wifiIPLabel, LV_ALIGN_TOP_LEFT, 10, 140);
 
+    // OTA status label
+    wifiOTAStatusLabel = lv_label_create(tile);
+    lv_obj_set_style_text_font(wifiOTAStatusLabel, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(wifiOTAStatusLabel, Theme::red(), 0);
+    lv_label_set_text(wifiOTAStatusLabel, "OTA: Disabled");
+    lv_obj_align(wifiOTAStatusLabel, LV_ALIGN_TOP_LEFT, 10, 170);
+
+    // Refresh WiFi button
+    wifiRefreshBtn = lv_btn_create(tile);
+    lv_obj_set_size(wifiRefreshBtn, 200, 40);
+    lv_obj_align(wifiRefreshBtn, LV_ALIGN_TOP_LEFT, 250, 165);
+    lv_obj_set_style_bg_color(wifiRefreshBtn, lv_color_hex(0x333333), 0);
+    lv_obj_set_style_bg_color(wifiRefreshBtn, lv_color_hex(0x555555), LV_STATE_PRESSED);
+    lv_obj_set_style_radius(wifiRefreshBtn, 8, 0);
+    lv_obj_add_event_cb(wifiRefreshBtn, onRefreshBtnClicked, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *btnLabel = lv_label_create(wifiRefreshBtn);
+    lv_obj_set_style_text_font(btnLabel, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(btnLabel, Theme::white(), 0);
+    lv_label_set_text(btnLabel, "Refresh WiFi");
+    lv_obj_center(btnLabel);
+
     // Module Status section header
     lv_obj_t *moduleHeader = lv_label_create(tile);
     lv_obj_set_style_text_font(moduleHeader, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(moduleHeader, Theme::grey(), 0);
     lv_label_set_text(moduleHeader, "Module Status:");
-    lv_obj_align(moduleHeader, LV_ALIGN_TOP_LEFT, 10, 200);
+    lv_obj_align(moduleHeader, LV_ALIGN_TOP_LEFT, 10, 260);
 
     // GPS status
     moduleGPSLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(moduleGPSLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(moduleGPSLabel, Theme::red(), 0);
     lv_label_set_text(moduleGPSLabel, "GPS: Not detected");
-    lv_obj_align(moduleGPSLabel, LV_ALIGN_TOP_LEFT, 10, 240);
+    lv_obj_align(moduleGPSLabel, LV_ALIGN_TOP_LEFT, 10, 300);
 
     // Magnetometer status
     moduleMagnetometerLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(moduleMagnetometerLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(moduleMagnetometerLabel, Theme::red(), 0);
     lv_label_set_text(moduleMagnetometerLabel, "Magnetometer: Not detected");
-    lv_obj_align(moduleMagnetometerLabel, LV_ALIGN_TOP_LEFT, 10, 270);
+    lv_obj_align(moduleMagnetometerLabel, LV_ALIGN_TOP_LEFT, 10, 330);
 
     // IMU status
     moduleIMULabel = lv_label_create(tile);
     lv_obj_set_style_text_font(moduleIMULabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(moduleIMULabel, Theme::red(), 0);
     lv_label_set_text(moduleIMULabel, "IMU: Not detected");
-    lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 300);
+    lv_obj_align(moduleIMULabel, LV_ALIGN_TOP_LEFT, 10, 360);
 
     // Battery Status section header
     lv_obj_t *batteryHeader = lv_label_create(tile);
     lv_obj_set_style_text_font(batteryHeader, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(batteryHeader, Theme::grey(), 0);
     lv_label_set_text(batteryHeader, "Battery Status:");
-    lv_obj_align(batteryHeader, LV_ALIGN_TOP_LEFT, 10, 340);
+    lv_obj_align(batteryHeader, LV_ALIGN_TOP_LEFT, 10, 400);
 
     // Battery voltage
     batteryVoltageLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(batteryVoltageLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(batteryVoltageLabel, Theme::white(), 0);
     lv_label_set_text(batteryVoltageLabel, "Voltage: --.-V");
-    lv_obj_align(batteryVoltageLabel, LV_ALIGN_TOP_LEFT, 10, 380);
+    lv_obj_align(batteryVoltageLabel, LV_ALIGN_TOP_LEFT, 10, 440);
 
     // Battery status (charging/discharging)
     batteryStatusLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(batteryStatusLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(batteryStatusLabel, Theme::white(), 0);
     lv_label_set_text(batteryStatusLabel, "Status: Unknown");
-    lv_obj_align(batteryStatusLabel, LV_ALIGN_TOP_LEFT, 10, 410);
+    lv_obj_align(batteryStatusLabel, LV_ALIGN_TOP_LEFT, 10, 470);
 
     // Battery percentage estimate
     batteryPercentLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(batteryPercentLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(batteryPercentLabel, Theme::white(), 0);
     lv_label_set_text(batteryPercentLabel, "Charge: --%");
-    lv_obj_align(batteryPercentLabel, LV_ALIGN_TOP_LEFT, 10, 440);
+    lv_obj_align(batteryPercentLabel, LV_ALIGN_TOP_LEFT, 10, 500);
     // Charging current (when charging)
     batteryCurrentLabel = lv_label_create(tile);
     lv_obj_set_style_text_font(batteryCurrentLabel, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(batteryCurrentLabel, Theme::white(), 0);
     lv_label_set_text(batteryCurrentLabel, "Current: --- mA");
-    lv_obj_align(batteryCurrentLabel, LV_ALIGN_TOP_LEFT, 10, 470);
+    lv_obj_align(batteryCurrentLabel, LV_ALIGN_TOP_LEFT, 10, 530);
     // Debug section header (moved down)
     lv_obj_t *debugHeader = lv_label_create(tile);
     lv_obj_set_style_text_font(debugHeader, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(debugHeader, Theme::yellow(), 0);
     lv_label_set_text(debugHeader, "Debug:");
-    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 530);
+    lv_obj_align(debugHeader, LV_ALIGN_TOP_LEFT, 10, 590);
 
     // Frame counter (moved down)
     debugFrameCounter = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFrameCounter, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFrameCounter, Theme::grey(), 0);
     lv_label_set_text(debugFrameCounter, "Frames: 0");
-    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 570);
+    lv_obj_align(debugFrameCounter, LV_ALIGN_TOP_LEFT, 10, 630);
 
     // FPS display (moved down)
     debugFPS = lv_label_create(tile);
     lv_obj_set_style_text_font(debugFPS, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugFPS, Theme::grey(), 0);
     lv_label_set_text(debugFPS, "FPS: 0.0");
-    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 600);
+    lv_obj_align(debugFPS, LV_ALIGN_TOP_LEFT, 10, 660);
 
     // Uptime display (moved down)
     debugUptime = lv_label_create(tile);
     lv_obj_set_style_text_font(debugUptime, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(debugUptime, Theme::grey(), 0);
     lv_label_set_text(debugUptime, "Uptime: 0s");
-    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 630);
+    lv_obj_align(debugUptime, LV_ALIGN_TOP_LEFT, 10, 690);
 }
 
 void InfoPage::update()
@@ -150,6 +177,71 @@ void InfoPage::update()
         currentFPS = framesThisSecond * 1000.0f / (now - lastFPSUpdate);
         framesThisSecond = 0;
         lastFPSUpdate = now;
+    }
+
+    // Update WiFi status from WiFiOTA module
+    WiFiOTAState wifiState = wifiOTA.getState();
+
+    if (wifiStatusLabel)
+    {
+        switch (wifiState)
+        {
+        case WiFiOTAState::Connected:
+            lv_label_set_text(wifiStatusLabel, "Connected");
+            lv_obj_set_style_text_color(wifiStatusLabel, Theme::green(), 0);
+            break;
+        case WiFiOTAState::Scanning:
+            lv_label_set_text(wifiStatusLabel, "Scanning...");
+            lv_obj_set_style_text_color(wifiStatusLabel, Theme::yellow(), 0);
+            break;
+        case WiFiOTAState::Disabled:
+        default:
+            lv_label_set_text(wifiStatusLabel, "Disconnected");
+            lv_obj_set_style_text_color(wifiStatusLabel, Theme::red(), 0);
+            break;
+        }
+    }
+
+    if (wifiSSIDLabel)
+    {
+        lv_label_set_text_fmt(wifiSSIDLabel, "SSID: %s", wifiOTA.getSSID().c_str());
+    }
+
+    if (wifiIPLabel)
+    {
+        lv_label_set_text_fmt(wifiIPLabel, "IP: %s", wifiOTA.getIP().c_str());
+    }
+
+    if (wifiOTAStatusLabel)
+    {
+        if (wifiState == WiFiOTAState::Connected)
+        {
+            lv_label_set_text(wifiOTAStatusLabel, "OTA: Ready");
+            lv_obj_set_style_text_color(wifiOTAStatusLabel, Theme::green(), 0);
+        }
+        else if (wifiState == WiFiOTAState::Scanning)
+        {
+            lv_label_set_text(wifiOTAStatusLabel, "OTA: Scanning...");
+            lv_obj_set_style_text_color(wifiOTAStatusLabel, Theme::yellow(), 0);
+        }
+        else
+        {
+            lv_label_set_text(wifiOTAStatusLabel, "OTA: Disabled");
+            lv_obj_set_style_text_color(wifiOTAStatusLabel, Theme::red(), 0);
+        }
+    }
+
+    // Disable refresh button during scanning
+    if (wifiRefreshBtn)
+    {
+        if (wifiState == WiFiOTAState::Scanning)
+        {
+            lv_obj_add_state(wifiRefreshBtn, LV_STATE_DISABLED);
+        }
+        else
+        {
+            lv_obj_clear_state(wifiRefreshBtn, LV_STATE_DISABLED);
+        }
     }
 
     // Update GPS module status

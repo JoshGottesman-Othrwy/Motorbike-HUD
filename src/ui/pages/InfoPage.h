@@ -3,10 +3,12 @@
 #include "../Theme.h"
 #include "../../sensors/GPS.h"
 #include "../../display.h"
+#include "../../wifi/WiFiOTA.h"
 
 // External sensor instances from main.cpp
 extern GPS gps;
 extern Display display;
+extern WiFiOTA wifiOTA;
 
 /**
  * Info page showing system status.
@@ -19,6 +21,8 @@ private:
     lv_obj_t *wifiStatusLabel = nullptr;
     lv_obj_t *wifiSSIDLabel = nullptr;
     lv_obj_t *wifiIPLabel = nullptr;
+    lv_obj_t *wifiOTAStatusLabel = nullptr;
+    lv_obj_t *wifiRefreshBtn = nullptr;
     lv_obj_t *moduleGPSLabel = nullptr;
     lv_obj_t *moduleIMULabel = nullptr;
     lv_obj_t *moduleMagnetometerLabel = nullptr;
@@ -39,6 +43,8 @@ private:
     uint32_t lastFPSUpdate = 0;
     uint32_t framesThisSecond = 0;
     float currentFPS = 0.0f;
+
+    static void onRefreshBtnClicked(lv_event_t *e);
 
 public:
     InfoPage() : Page("Info") {}
