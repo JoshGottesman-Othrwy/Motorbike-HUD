@@ -1,5 +1,49 @@
 #include "GPS.h"
 
+// ============================================================================
+// UK Daylight Saving Time (BST) helpers
+// BST starts: last Sunday of March at 01:00 UTC
+// BST ends:   last Sunday of October at 01:00 UTC
+// ============================================================================
+
+// Returns 0=Sunday ... 6=Saturday (Tomohiko Sakamoto's algorithm)
+static int ukDayOfWeek(int y, int m, int d)
+{
+    static const int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+    if (m < 3)
+        y--;
+    return (y + y / 4 - y / 100 + y / 400 + t[m - 1] + d) % 7;
+}
+
+// Returns true if the given UTC date/time falls within UK BST
+static bool isUKBST(uint16_t year, uint8_t month, uint8_t day, uint8_t hour)
+{
+    if (month < 3 || month > 10)
+        return false;
+    if (month > 3 && month < 10)
+        return true;
+
+    // March and October both have 31 days
+    int lastSunday = 31 - ukDayOfWeek(year, month, 31);
+
+    if (month == 3) // BST begins last Sunday of March at 01:00 UTC
+    {
+        if (day > lastSunday)
+            return true;
+        if (day == lastSunday && hour >= 1)
+            return true;
+        return false;
+    }
+    else // month == 10: BST ends last Sunday of October at 01:00 UTC
+    {
+        if (day < lastSunday)
+            return true;
+        if (day == lastSunday && hour < 1)
+            return true;
+        return false;
+    }
+}
+
 // Define static constexpr array
 constexpr uint32_t GPS::BAUD_RATES[];
 
@@ -220,6 +264,13 @@ GPSTime GPS::getTime()
         time.minute = gps.time.minute();
         time.second = gps.time.second();
         time.valid = true;
+
+        // Apply UK BST offset (+1 hour) when applicable
+        if (gps.date.isValid() &&
+            isUKBST(gps.date.year(), gps.date.month(), gps.date.day(), time.hour))
+        {
+            time.hour = (time.hour + 1) % 24;
+        }
     }
     else
     {
